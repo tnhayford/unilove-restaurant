@@ -11,9 +11,10 @@ chmod +x \
   .githooks/pre-commit \
   .githooks/post-commit \
   scripts/mission_guard.sh \
-  scripts/git_autopush.sh
+  scripts/git_autopush.sh \
+  scripts/snapshot_state.sh
 
 echo "[install-hooks] Hooks installed."
 echo "[install-hooks] pre-commit: mission drift + impact analysis"
-echo "[install-hooks] post-commit: last commit impact analysis + optional auto-push"
+echo "[install-hooks] post-commit: session snapshot + last commit impact analysis + optional auto-push"
 echo "[install-hooks] Enable auto-push: git config hooks.autopush true"

@@ -1098,18 +1098,18 @@ async function getOrderByOrderNumberForTracking(input) {
   };
 }
 
-async function getOrdersForAdmin() {
+async function getOrdersForAdmin(options = {}) {
+  const includeItems = options.includeItems === true;
   const orders = await listOrders();
   const output = [];
   for (const order of orders) {
-    const items = await getOrderItems(order.id);
     output.push({
       ...order,
       stageLabel: getReadableStage(order.status),
       ageMinutes: getAgeMinutes(order),
       isDelayed: isOperationallyDelayed(order),
       availableActions: getAvailableActions(order),
-      items,
+      items: includeItems ? await getOrderItems(order.id) : [],
     });
   }
   return output;

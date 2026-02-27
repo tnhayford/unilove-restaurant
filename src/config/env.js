@@ -77,6 +77,11 @@ module.exports = {
   enableSlaAlertJob: process.env.ENABLE_SLA_ALERT_JOB !== "false",
   slaAlertIntervalMs: Number(process.env.SLA_ALERT_INTERVAL_MS || 60000),
   slaAlertPhones: process.env.SLA_ALERT_PHONES || "",
+  enableRiderAssignmentReconcileJob:
+    process.env.ENABLE_RIDER_ASSIGNMENT_RECONCILE_JOB !== "false",
+  riderAssignmentReconcileIntervalMs: Number(
+    process.env.RIDER_ASSIGNMENT_RECONCILE_INTERVAL_MS || 60000,
+  ),
   enableDurableJobOrchestrator:
     process.env.ENABLE_DURABLE_JOB_ORCHESTRATOR !== "false",
   durableJobDispatchIntervalMs: Number(

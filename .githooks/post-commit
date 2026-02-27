@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ -x "scripts/snapshot_state.sh" ]]; then
+  scripts/snapshot_state.sh || true
+fi
+
 scripts/mission_guard.sh --last-commit
 scripts/git_autopush.sh

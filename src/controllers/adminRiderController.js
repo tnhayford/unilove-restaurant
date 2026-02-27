@@ -3,7 +3,11 @@ const { assignDeliveryOrdersByWorkload } = require("../services/riderAssignmentS
 const { listRiderRoster } = require("../services/riderPresenceService");
 
 async function listAdminRiders(req, res) {
-  await assignDeliveryOrdersByWorkload();
+  const reconcile =
+    String(req.query.reconcile || "").trim().toLowerCase() === "true";
+  if (reconcile) {
+    await assignDeliveryOrdersByWorkload();
+  }
 
   const [riderRows, deliveryQueue] = await Promise.all([
     listRiderRoster(),

@@ -41,13 +41,25 @@ function createApp() {
   });
 
   const adminStaticOptions = {
-    etag: false,
+    etag: true,
     maxAge: 0,
-    setHeaders: (res) => {
-      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
-      res.setHeader("Surrogate-Control", "no-store");
+    setHeaders: (res, filePath) => {
+      const normalizedPath = String(filePath || "").toLowerCase();
+      const isHtml = normalizedPath.endsWith(".html");
+      if (isHtml) {
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+        res.setHeader("Pragma", "no-cache");
+        res.setHeader("Expires", "0");
+        res.setHeader("Surrogate-Control", "no-store");
+        return;
+      }
+
+      // Cache static assets briefly with revalidation to reduce repetitive downloads
+      // while still allowing quick rollout of updates.
+      res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+      res.removeHeader("Pragma");
+      res.removeHeader("Expires");
+      res.removeHeader("Surrogate-Control");
     },
   };
 

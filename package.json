@@ -16,6 +16,7 @@
     "backdate:sample": "node scripts/backdateSampleOrders.js",
     "simulate:incoming": "node scripts/simulatePaidIncomingOrder.js",
     "db:export:postgres": "node scripts/exportPostgresBundle.js",
+    "snapshot:state": "bash scripts/snapshot_state.sh",
     "test": "vitest run"
   },
   "keywords": [],

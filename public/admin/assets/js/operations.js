@@ -1,6 +1,7 @@
 const ORDER_REFRESH_MS = 12000;
 const ORDER_HEALTHCHECK_MS = 60000;
 const OPS_STREAM_RECONNECT_MS = 8000;
+const RIDER_REFRESH_MS = 30000;
 const DELAY_THRESHOLD_MINUTES = 30;
 const OPS_ALERT_SOUND_URL = "/admin/assets/sounds/ops-incoming-alert.m4a";
 const MAX_VISIBLE_ORDER_CARDS_PER_LANE = 8;
@@ -80,6 +81,7 @@ const state = {
   riders: [],
   activeView: "orders",
   refreshTimerId: null,
+  lastRidersFetchAt: 0,
   opsEventSource: null,
   opsStreamConnected: false,
   opsStreamRetryTimerId: null,
@@ -1109,15 +1111,25 @@ async function fetchOrders() {
   }
 }
 
-async function fetchRiders(orders) {
+async function fetchRiders({ force = false } = {}) {
+  if (
+    !force &&
+    state.lastRidersFetchAt > 0 &&
+    Date.now() - state.lastRidersFetchAt < RIDER_REFRESH_MS
+  ) {
+    return state.riders;
+  }
+
   try {
     const payload = await apiGet("/api/admin/riders");
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     state.riderFeedUnavailable = false;
-    return rows.map((row) => normalizeRider(row));
+    const normalized = rows.map((row) => normalizeRider(row));
+    state.lastRidersFetchAt = Date.now();
+    return normalized;
   } catch (_error) {
     state.riderFeedUnavailable = true;
-    return [];
+    return state.riders;
   }
 }
 
@@ -1141,7 +1153,7 @@ async function refreshBoard({ silent = false } = {}) {
   }
 
   const orders = await fetchOrders();
-  const riders = await fetchRiders(orders);
+  const riders = await fetchRiders({ force: !silent });
 
   state.orders = orders;
   state.riders = riders;

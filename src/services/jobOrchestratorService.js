@@ -3,6 +3,7 @@ const env = require("../config/env");
 const { reconcilePendingPayments, reconcileActivePromptAttempts } = require("../jobs/paymentStatusCheckJob");
 const { runReportScheduleTick } = require("../jobs/reportScheduleJob");
 const { runSlaAlertSweep } = require("./slaAlertService");
+const { assignDeliveryOrdersByWorkload } = require("./riderAssignmentService");
 const {
   upsertJobSchedule,
   listDueJobSchedules,
@@ -49,6 +50,12 @@ function getSchedulerDefinitions() {
       intervalMs: env.slaAlertIntervalMs,
       payload: null,
     },
+    {
+      taskName: "rider_assignment_reconcile",
+      enabled: env.enableRiderAssignmentReconcileJob,
+      intervalMs: env.riderAssignmentReconcileIntervalMs,
+      payload: null,
+    },
   ];
 }
 
@@ -67,6 +74,9 @@ async function runTask(taskName, payload = null) {
   }
   if (taskName === "sla_alert_sweep") {
     return runSlaAlertSweep();
+  }
+  if (taskName === "rider_assignment_reconcile") {
+    return assignDeliveryOrdersByWorkload();
   }
   throw new Error(`Unknown orchestrator task: ${taskName}`);
 }

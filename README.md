@@ -148,6 +148,7 @@ Admin API:
 - `npm run backdate:sample`
 - `npm run simulate:incoming`
 - `npm run db:export:postgres`
+- `npm run snapshot:state`
 - `npm test`
 
 ## Key Environment Variables
@@ -207,3 +208,4 @@ Other:
 - `docs/11_SYSTEM_FLOWCHART.md`
 - `docs/12_HETZNER_DEPLOYMENT_GUIDE.md`
 - `docs/17_ARCHITECTURE_BACKLOG_REMEDIATION.md`
+- `docs/SESSION_STATE.md`

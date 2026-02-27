@@ -58,7 +58,8 @@ const orderHistoryQuerySchema = z
   });
 
 async function listOrders(req, res) {
-  const orders = await getOrdersForAdmin();
+  const includeItems = String(req.query.includeItems || "").trim().toLowerCase() === "true";
+  const orders = await getOrdersForAdmin({ includeItems });
   return res.json({ data: orders });
 }
 
