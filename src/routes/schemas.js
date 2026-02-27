@@ -59,42 +59,45 @@ const deliveryVerifySchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/),
 });
 
+const riderOtpRequestSchema = z
+  .object({
+    mode: z.enum(["staff", "guest"]).optional().default("staff"),
+    phone: phoneSchema,
+    riderName: z.string().trim().min(2).max(120).optional(),
+    referralCode: z.string().trim().max(40).optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.mode === "guest" && !value.referralCode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "referralCode is required for guest rider OTP request",
+        path: ["referralCode"],
+      });
+    }
+  });
+
 const riderLoginSchema = z
   .object({
     mode: z.enum(["staff", "guest"]).optional().default("staff"),
-    riderId: z.string().trim().max(80).optional(),
+    phone: phoneSchema,
+    otpCode: z.string().trim().regex(/^\d{6}$/),
+    requestId: z.string().trim().min(1).max(120).optional(),
     riderName: z.string().trim().min(2).max(120).optional(),
-    pin: z.string().trim().max(32).optional(),
-    guestAccessCode: z.string().trim().max(64).optional(),
+    referralCode: z.string().trim().max(40).optional(),
     fcmToken: z.string().trim().min(20).optional(),
     deviceId: z.string().trim().max(120).optional(),
     platform: z.string().trim().max(30).optional(),
   })
   .superRefine((value, ctx) => {
     if (value.mode === "guest") {
-      if (!value.riderName && !value.riderId) {
+      if (!value.referralCode) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "riderName or riderId is required for guest rider login",
-          path: ["riderName"],
+          message: "referralCode is required for guest rider login",
+          path: ["referralCode"],
         });
       }
       return;
-    }
-
-    if (!value.riderId) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "riderId is required",
-        path: ["riderId"],
-      });
-    }
-    if (!value.pin || value.pin.length < 4) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "pin must be at least 4 digits",
-        path: ["pin"],
-      });
     }
   });
 
@@ -291,28 +294,57 @@ const adminOperationsPolicyUpdateSchema = z
   });
 
 const adminRiderCreateSchema = z.object({
-  riderId: z.string().trim().min(2).max(60).regex(/^[a-zA-Z0-9_-]+$/),
   fullName: z.string().trim().min(2).max(120),
-  pin: z.string().trim().min(4).max(32).regex(/^\d+$/, "pin must be numeric"),
+  phone: phoneSchema,
+  notes: z.string().trim().max(300).optional(),
   isActive: z.boolean().optional(),
 });
 
 const adminRiderUpdateSchema = z
   .object({
     fullName: z.string().trim().min(2).max(120).optional(),
-    pin: z.string().trim().min(4).max(32).regex(/^\d+$/, "pin must be numeric").optional(),
+    phone: phoneSchema.optional(),
+    notes: z.string().trim().max(300).optional(),
+    onboardingStatus: z.enum(["onboarded", "offboarded"]).optional(),
     isActive: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (
       !Object.prototype.hasOwnProperty.call(value, "fullName") &&
-      !Object.prototype.hasOwnProperty.call(value, "pin") &&
+      !Object.prototype.hasOwnProperty.call(value, "phone") &&
+      !Object.prototype.hasOwnProperty.call(value, "notes") &&
+      !Object.prototype.hasOwnProperty.call(value, "onboardingStatus") &&
       !Object.prototype.hasOwnProperty.call(value, "isActive")
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "At least one rider field must be provided",
         path: ["fullName"],
+      });
+    }
+  });
+
+const adminRiderReferralCreateSchema = z.object({
+  label: z.string().trim().min(2).max(120).optional(),
+  maxUses: z.number().int().min(1).max(100000).optional().nullable(),
+});
+
+const adminRiderReferralUpdateSchema = z
+  .object({
+    label: z.string().trim().min(2).max(120).optional(),
+    maxUses: z.number().int().min(1).max(100000).optional().nullable(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      !Object.prototype.hasOwnProperty.call(value, "label") &&
+      !Object.prototype.hasOwnProperty.call(value, "maxUses") &&
+      !Object.prototype.hasOwnProperty.call(value, "isActive")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "At least one referral field must be provided",
+        path: ["label"],
       });
     }
   });
@@ -406,6 +438,7 @@ module.exports = {
   orderCreateSchema,
   ussdRequestSchema,
   deliveryVerifySchema,
+  riderOtpRequestSchema,
   riderLoginSchema,
   riderDeviceTokenSchema,
   riderShiftUpdateSchema,
@@ -424,6 +457,8 @@ module.exports = {
   adminOperationsPolicyUpdateSchema,
   adminRiderCreateSchema,
   adminRiderUpdateSchema,
+  adminRiderReferralCreateSchema,
+  adminRiderReferralUpdateSchema,
   adminMenuItemCreateSchema,
   adminMenuItemUpdateSchema,
   adminMenuCategoryCreateSchema,

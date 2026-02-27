@@ -63,6 +63,17 @@ async function seedMenuItem() {
   return menuId;
 }
 
+async function seedReferralCode(code = "UNIREF10", maxUses = null) {
+  const db = await getDbHandle();
+  const id = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  await db.run(
+    `INSERT INTO rider_referral_codes (id, code, label, is_active, max_uses, use_count)
+     VALUES (?, ?, ?, 1, ?, 0)`,
+    [id, code, "Test Referral", maxUses],
+  );
+  return { id, code };
+}
+
 function extractTrackingTokenFromSms(message) {
   const text = String(message || "");
   const tokenMatch = text.match(/[?&]token=([a-f0-9]+)/i);
@@ -268,40 +279,66 @@ describe("Security hardening integration", () => {
     expect(mismatchedTokenRes.status).toBe(404);
   });
 
-  it("rejects guest rider login without required invite code", async () => {
+  it("rejects guest OTP request without referral code", async () => {
     if (!canRunHttpTests) return;
 
-    const response = await request.post("/api/rider/auth/login").send({
+    const response = await request.post("/api/rider/auth/request-otp").send({
       mode: "guest",
       riderName: "Guest Ama",
-      riderId: "ama",
+      phone: "0240009001",
     });
-    expect(response.status).toBe(403);
-    expect(response.body?.error).toMatch(/access code/i);
+    expect(response.status).toBe(400);
+    expect(response.body?.error).toMatch(/validation/i);
   });
 
-  it("allows guest rider login with valid invite code", async () => {
+  it("allows guest rider OTP login with valid referral code", async () => {
     if (!canRunHttpTests) return;
+    const seeded = await seedReferralCode("UNIREF42", 100);
 
-    const response = await request.post("/api/rider/auth/login").send({
+    const requestOtpRes = await request.post("/api/rider/auth/request-otp").send({
       mode: "guest",
+      phone: "0240009002",
       riderName: "Guest Ama",
-      riderId: "ama",
-      guestAccessCode: "guest-access-2026",
+      referralCode: seeded.code,
     });
-    expect(response.status).toBe(200);
-    expect(response.body?.data?.token).toBeTruthy();
-    expect(response.body?.data?.rider?.mode).toBe("guest");
+    expect(requestOtpRes.status).toBe(200);
+    const requestId = requestOtpRes.body?.data?.requestId;
+    const debugOtpCode = requestOtpRes.body?.data?.debugOtpCode;
+    expect(requestId).toBeTruthy();
+    expect(debugOtpCode).toMatch(/^\d{6}$/);
+
+    const loginRes = await request.post("/api/rider/auth/login").send({
+      mode: "guest",
+      phone: "0240009002",
+      otpCode: debugOtpCode,
+      requestId,
+      riderName: "Guest Ama",
+      referralCode: seeded.code,
+    });
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body?.data?.token).toBeTruthy();
+    expect(loginRes.body?.data?.rider?.mode).toBe("guest");
   });
 
   it("blocks COD OTP verification until rider confirms collection", async () => {
     if (!canRunHttpTests) return;
 
+    const referral = await seedReferralCode("UNIREF99", 500);
+    const requestOtpRes = await request.post("/api/rider/auth/request-otp").send({
+      mode: "guest",
+      phone: "0240009111",
+      riderName: "Rider Kojo",
+      referralCode: referral.code,
+    });
+    expect(requestOtpRes.status).toBe(200);
+
     const loginRes = await request.post("/api/rider/auth/login").send({
       mode: "guest",
+      phone: "0240009111",
+      otpCode: requestOtpRes.body?.data?.debugOtpCode,
+      requestId: requestOtpRes.body?.data?.requestId,
       riderName: "Rider Kojo",
-      riderId: "rider-cod-1",
-      guestAccessCode: "guest-access-2026",
+      referralCode: referral.code,
     });
     expect(loginRes.status).toBe(200);
     const token = loginRes.body?.data?.token;
@@ -326,10 +363,10 @@ describe("Security hardening integration", () => {
        SET status = 'OUT_FOR_DELIVERY',
            payment_method = 'cash_on_delivery',
            payment_status = 'PENDING',
-           assigned_rider_id = 'rider-cod-1',
+           assigned_rider_id = ?,
            updated_at = datetime('now')
        WHERE id = ?`,
-      [orderId],
+      [loginRes.body?.data?.rider?.id, orderId],
     );
     const codeHash = await bcrypt.hash("123456", 10);
     await db.run(

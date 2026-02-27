@@ -336,7 +336,12 @@ async function runMigrations() {
       id TEXT PRIMARY KEY,
       full_name TEXT NOT NULL,
       pin_hash TEXT NOT NULL,
+      phone TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
+      onboarding_status TEXT NOT NULL DEFAULT 'onboarded',
+      notes TEXT,
+      created_by_admin_id TEXT,
+      offboarded_at TEXT,
       last_login_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -376,6 +381,34 @@ async function runMigrations() {
       last_seen_at TEXT,
       last_shift_on_at TEXT,
       last_shift_off_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS rider_referral_codes (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      label TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      max_uses INTEGER,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      last_used_at TEXT,
+      created_by_admin_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS rider_login_otps (
+      id TEXT PRIMARY KEY,
+      phone TEXT NOT NULL,
+      rider_mode TEXT NOT NULL CHECK(rider_mode IN ('staff', 'guest')),
+      rider_id TEXT,
+      referral_code TEXT,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      max_attempts INTEGER NOT NULL DEFAULT 5,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      consumed_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -436,6 +469,10 @@ async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_guest_rider_devices_active ON guest_rider_devices(is_active);
     CREATE INDEX IF NOT EXISTS idx_rider_presence_mode_status ON rider_presence(mode, shift_status);
     CREATE INDEX IF NOT EXISTS idx_rider_presence_last_seen ON rider_presence(last_seen_at);
+    CREATE INDEX IF NOT EXISTS idx_rider_referral_codes_active ON rider_referral_codes(is_active, code);
+    CREATE INDEX IF NOT EXISTS idx_rider_login_otps_phone_mode ON rider_login_otps(phone, rider_mode, created_at);
+    CREATE INDEX IF NOT EXISTS idx_rider_login_otps_expires ON rider_login_otps(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_rider_login_otps_consumed ON rider_login_otps(consumed_at);
     CREATE INDEX IF NOT EXISTS idx_job_schedules_due ON job_schedules(enabled, next_run_at);
     CREATE INDEX IF NOT EXISTS idx_job_runs_status_queued ON job_runs(status, queued_at);
     CREATE INDEX IF NOT EXISTS idx_job_runs_task_status ON job_runs(task_name, status);
@@ -454,6 +491,11 @@ async function runMigrations() {
   await ensureColumn(db, "orders", "cancel_reason", "TEXT");
   await ensureColumn(db, "admin_users", "full_name", "TEXT");
   await ensureColumn(db, "admin_users", "role", "TEXT NOT NULL DEFAULT 'staff'");
+  await ensureColumn(db, "riders", "phone", "TEXT");
+  await ensureColumn(db, "riders", "onboarding_status", "TEXT NOT NULL DEFAULT 'onboarded'");
+  await ensureColumn(db, "riders", "notes", "TEXT");
+  await ensureColumn(db, "riders", "created_by_admin_id", "TEXT");
+  await ensureColumn(db, "riders", "offboarded_at", "TEXT");
   await ensureColumn(db, "menu_items", "ussd_short_name", "TEXT");
   await ensureColumn(db, "menu_items", "ussd_price_cedis", "REAL");
   await ensureColumn(db, "menu_items", "ussd_is_visible", "INTEGER NOT NULL DEFAULT 1");
@@ -477,6 +519,21 @@ async function runMigrations() {
   );
   await db.exec(
     "CREATE INDEX IF NOT EXISTS idx_rider_presence_last_seen ON rider_presence(last_seen_at);",
+  );
+  await db.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_riders_phone_unique ON riders(phone) WHERE phone IS NOT NULL AND TRIM(phone) <> '';",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_rider_referral_codes_active ON rider_referral_codes(is_active, code);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_rider_login_otps_phone_mode ON rider_login_otps(phone, rider_mode, created_at);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_rider_login_otps_expires ON rider_login_otps(expires_at);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_rider_login_otps_consumed ON rider_login_otps(consumed_at);",
   );
 
   await db.run(
@@ -580,6 +637,16 @@ async function runMigrations() {
          THEN UPPER(SUBSTR(email, 1, 1)) || SUBSTR(REPLACE(REPLACE(REPLACE(SUBSTR(email, 2, INSTR(email, '@') - 2), '.', ' '), '_', ' '), '-', ' '), 1)
        ELSE full_name
      END`,
+  );
+
+  await db.run(
+    `UPDATE riders
+     SET onboarding_status = CASE
+       WHEN is_active = 1 THEN 'onboarded'
+       ELSE 'offboarded'
+     END
+     WHERE onboarding_status IS NULL
+       OR TRIM(onboarding_status) = ''`,
   );
 
   await backfillOrderNumbers(db);

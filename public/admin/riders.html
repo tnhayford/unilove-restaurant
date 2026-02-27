@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rider Management</title>
     <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+    <link rel="stylesheet" href="/admin/assets/css/rider-management.css" />
   </head>
   <body>
     <div class="page-shell">
@@ -22,7 +23,7 @@
             <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
             <div>
               <h1>Rider Management</h1>
-              <div class="meta">Create rider accounts, set PIN, and control active status.</div>
+              <div class="meta">Onboard, offboard, and monitor all riders with phone-based OTP access.</div>
             </div>
           </div>
           <div class="topbar-actions">
@@ -32,51 +33,98 @@
           </div>
         </header>
 
-        <section class="panel">
-          <form id="createRiderForm" class="filters">
-            <div>
-              <label>Rider ID</label>
-              <input id="riderId" class="input" placeholder="rider-kofi" required />
-            </div>
-            <div>
-              <label>Full Name</label>
-              <input id="riderFullName" class="input" placeholder="Kofi Mensah" required />
-            </div>
-            <div>
-              <label>PIN (numeric)</label>
-              <input id="riderPin" class="input" type="password" inputmode="numeric" minlength="4" required />
-            </div>
-            <div>
-              <label>Account Status</label>
-              <select id="riderStatus" class="select">
-                <option value="active">active</option>
-                <option value="inactive">inactive</option>
-              </select>
-            </div>
-            <div class="staff-form-action">
-              <button type="submit" class="btn primary">Create Rider</button>
-            </div>
-          </form>
-          <div id="statusText" class="helper" style="margin-top: 10px"></div>
+        <section class="panel rider-grid">
+          <article class="rider-card">
+            <h3>Onboard Rider</h3>
+            <form id="createRiderForm" class="rider-form">
+              <div>
+                <label>Full Name</label>
+                <input id="riderFullName" class="input" placeholder="Kofi Mensah" required />
+              </div>
+              <div>
+                <label>Phone Number</label>
+                <input id="riderPhone" class="input" inputmode="tel" placeholder="0241234567" required />
+              </div>
+              <div>
+                <label>Status</label>
+                <select id="riderStatus" class="select">
+                  <option value="active">Onboarded (active)</option>
+                  <option value="inactive">Offboarded (inactive)</option>
+                </select>
+              </div>
+              <div class="full">
+                <label>Notes (optional)</label>
+                <textarea id="riderNotes" class="input" rows="2" placeholder="Area, shift notes, bike plate, etc."></textarea>
+              </div>
+              <div class="full rider-form-action">
+                <button type="submit" class="btn primary">Create Rider</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="rider-card">
+            <h3>Guest Referral Codes</h3>
+            <form id="createReferralForm" class="rider-form">
+              <div>
+                <label>Label</label>
+                <input id="referralLabel" class="input" placeholder="Weekend campaign" />
+              </div>
+              <div>
+                <label>Max Uses (optional)</label>
+                <input id="referralMaxUses" class="input" type="number" min="1" placeholder="100" />
+              </div>
+              <div class="full rider-form-action">
+                <button type="submit" class="btn primary">Generate Referral Code</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <section class="panel rider-actions-bar">
+          <button id="refreshRidersBtn" class="btn">Refresh Riders</button>
+          <button id="purgeRidersBtn" class="btn danger">Delete All Riders</button>
+          <div id="statusText" class="helper"></div>
         </section>
 
         <section class="panel table-wrap">
+          <h3>Rider Accounts</h3>
           <table class="table">
             <thead>
               <tr>
-                <th>Rider ID</th>
                 <th>Name</th>
+                <th>Phone</th>
                 <th>Mode</th>
-                <th>Shift</th>
                 <th>Account</th>
-                <th>Availability</th>
+                <th>Shift</th>
+                <th>Open Orders</th>
+                <th>Delivered</th>
+                <th>COD Collected (GHS)</th>
                 <th>Last Seen</th>
                 <th>Last Login</th>
-                <th>Created</th>
+                <th>Notes</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="riderBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel table-wrap">
+          <h3>Referral Codes</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Label</th>
+                <th>Status</th>
+                <th>Use Count</th>
+                <th>Max Uses</th>
+                <th>Last Used</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="referralBody"></tbody>
           </table>
         </section>
       </main>

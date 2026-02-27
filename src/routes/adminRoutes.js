@@ -19,6 +19,8 @@ const {
   adminOperationsPolicyUpdateSchema,
   adminRiderCreateSchema,
   adminRiderUpdateSchema,
+  adminRiderReferralCreateSchema,
+  adminRiderReferralUpdateSchema,
   adminMenuItemCreateSchema,
   adminMenuItemUpdateSchema,
   adminMenuCategoryCreateSchema,
@@ -79,6 +81,12 @@ const {
   listRiderAccounts,
   createRiderAccount,
   updateRiderAccount,
+  deleteRiderAccount,
+  purgeRiderAccounts,
+  listRiderReferrals,
+  createRiderReferral,
+  updateRiderReferral,
+  deleteRiderReferral,
 } = require("../controllers/adminRiderManagementController");
 const {
   runStatusCheck,
@@ -176,6 +184,55 @@ router.patch(
   requireCsrf,
   validate(adminRiderUpdateSchema),
   asyncHandler(updateRiderAccount),
+);
+router.delete(
+  "/riders/accounts/:riderId",
+  requireAdminAuth,
+  requireRole("admin"),
+  requirePermission("staff.manage"),
+  requireCsrf,
+  asyncHandler(deleteRiderAccount),
+);
+router.post(
+  "/riders/accounts/purge",
+  requireAdminAuth,
+  requireRole("admin"),
+  requirePermission("staff.manage"),
+  requireCsrf,
+  asyncHandler(purgeRiderAccounts),
+);
+router.get(
+  "/riders/referrals",
+  requireAdminAuth,
+  requireRole("admin"),
+  requirePermission("staff.manage"),
+  asyncHandler(listRiderReferrals),
+);
+router.post(
+  "/riders/referrals",
+  requireAdminAuth,
+  requireRole("admin"),
+  requirePermission("staff.manage"),
+  requireCsrf,
+  validate(adminRiderReferralCreateSchema),
+  asyncHandler(createRiderReferral),
+);
+router.patch(
+  "/riders/referrals/:referralId",
+  requireAdminAuth,
+  requireRole("admin"),
+  requirePermission("staff.manage"),
+  requireCsrf,
+  validate(adminRiderReferralUpdateSchema),
+  asyncHandler(updateRiderReferral),
+);
+router.delete(
+  "/riders/referrals/:referralId",
+  requireAdminAuth,
+  requireRole("admin"),
+  requirePermission("staff.manage"),
+  requireCsrf,
+  asyncHandler(deleteRiderReferral),
 );
 router.get("/orders/policy", requireAdminAuth, asyncHandler(getOrderPolicy));
 router.get("/customers/search", requireAdminAuth, requirePermission("orders.view"), asyncHandler(searchCustomers));

@@ -7,6 +7,7 @@ const env = require("../config/env");
 const {
   orderCreateSchema,
   ussdRequestSchema,
+  riderOtpRequestSchema,
   deliveryVerifySchema,
   riderLoginSchema,
   riderDeviceTokenSchema,
@@ -26,6 +27,7 @@ const {
   confirmRiderCashCollection,
 } = require("../controllers/riderController");
 const {
+  requestRiderOtp,
   riderLogin,
   registerDeviceToken,
   updateShiftStatus,
@@ -59,6 +61,12 @@ router.get(
 
 router.post("/ussd/interaction", validate(ussdRequestSchema), asyncHandler(processUssd));
 router.post("/payments/hubtel/callback", asyncHandler(handleHubtelCallback));
+router.post(
+  "/rider/auth/request-otp",
+  requireRiderKey,
+  validate(riderOtpRequestSchema),
+  asyncHandler(requestRiderOtp),
+);
 router.post("/rider/auth/login", requireRiderKey, validate(riderLoginSchema), asyncHandler(riderLogin));
 router.post("/rider/auth/logout", requireRiderKey, requireRiderAuth, asyncHandler(riderLogout));
 router.patch(

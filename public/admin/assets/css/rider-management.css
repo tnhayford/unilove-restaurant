@@ -1,0 +1,68 @@
+.rider-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rider-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.98rem;
+}
+
+.rider-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rider-form .full {
+  grid-column: 1 / -1;
+}
+
+.rider-form-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rider-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rider-actions-bar .helper {
+  margin-left: auto;
+}
+
+.pill.offboarded {
+  background: color-mix(in srgb, var(--warning) 22%, transparent);
+  color: var(--warning);
+}
+
+.pill.onboarded {
+  background: color-mix(in srgb, var(--brand) 20%, transparent);
+  color: var(--brand-strong);
+}
+
+.table td .input,
+.table td .select {
+  min-width: 120px;
+}
+
+.table .inline-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.table .inline-actions .btn {
+  white-space: nowrap;
+}
+
+@media (max-width: 1120px) {
+  .rider-grid {
+    grid-template-columns: 1fr;
+  }
+}

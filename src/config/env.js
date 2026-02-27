@@ -56,6 +56,8 @@ module.exports = {
   riderGuestLoginPolicy: (process.env.RIDER_GUEST_LOGIN_POLICY || "invite_only").trim(),
   riderGuestAccessCode: (process.env.RIDER_GUEST_ACCESS_CODE || "").trim(),
   riderGuestJwtTtlHours: Number(process.env.RIDER_GUEST_JWT_TTL_HOURS || 4),
+  riderOtpTtlMinutes: Number(process.env.RIDER_OTP_TTL_MINUTES || 5),
+  riderOtpMaxAttempts: Number(process.env.RIDER_OTP_MAX_ATTEMPTS || 5),
   fcmProjectId: (process.env.FCM_PROJECT_ID || "").trim(),
   fcmClientEmail: (process.env.FCM_CLIENT_EMAIL || "").trim(),
   fcmPrivateKey: (process.env.FCM_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim(),

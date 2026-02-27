@@ -1,9 +1,15 @@
 const {
+  requestRiderLoginOtp,
   loginRider,
   registerRiderDeviceToken,
   setRiderShiftStatus,
   logoutRider,
 } = require("../services/riderAuthService");
+
+async function requestRiderOtp(req, res) {
+  const data = await requestRiderLoginOtp(req.validatedBody);
+  return res.json({ data });
+}
 
 async function riderLogin(req, res) {
   const data = await loginRider(req.validatedBody);
@@ -42,6 +48,7 @@ async function riderLogout(req, res) {
 }
 
 module.exports = {
+  requestRiderOtp,
   riderLogin,
   registerDeviceToken,
   updateShiftStatus,

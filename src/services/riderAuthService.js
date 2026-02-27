@@ -1,11 +1,24 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const env = require("../config/env");
-const { getRiderById } = require("../repositories/riderRepository");
+const {
+  normalizePhone,
+  getRiderById,
+  getRiderByPhone,
+  touchRiderLogin,
+  getReferralCodeByCode,
+  incrementReferralCodeUsage,
+  createRiderLoginOtp,
+  findLatestOpenRiderLoginOtp,
+  incrementRiderLoginOtpAttempts,
+  consumeRiderLoginOtp,
+} = require("../repositories/riderRepository");
 const {
   upsertRiderDeviceToken,
   deactivateRiderDeviceTokensByRider,
 } = require("../repositories/riderDeviceRepository");
+const { randomDigits } = require("../utils/security");
+const { sendSms } = require("./smsService");
 const { logSensitiveAction } = require("./auditService");
 const { markRiderPresence, listRiderRoster } = require("./riderPresenceService");
 const {
@@ -47,25 +60,10 @@ function normalizeGuestPolicy(input) {
   return RIDER_GUEST_POLICIES.OPEN;
 }
 
-async function enforceGuestPolicy({ guestAccessCode }) {
-  const persisted = await getGuestRiderAuthSettings();
-  const policy = normalizeGuestPolicy(
-    persisted.loginPolicy || env.riderGuestLoginPolicy || process.env.RIDER_GUEST_LOGIN_POLICY,
-  );
-
-  if (policy === RIDER_GUEST_POLICIES.DISABLED) {
-    throw Object.assign(new Error("Guest rider access is disabled"), { statusCode: 403 });
-  }
-
-  if (policy === RIDER_GUEST_POLICIES.INVITE_ONLY) {
-    const configuredCode = String(
-      persisted.accessCode || env.riderGuestAccessCode || process.env.RIDER_GUEST_ACCESS_CODE || "",
-    ).trim();
-    const providedCode = String(guestAccessCode || "").trim();
-    if (!configuredCode || !providedCode || providedCode !== configuredCode) {
-      throw Object.assign(new Error("Guest rider access code is invalid"), { statusCode: 403 });
-    }
-  }
+function maskPhone(phone) {
+  const digits = normalizePhone(phone);
+  if (digits.length < 4) return "****";
+  return `${digits.slice(0, 2)}******${digits.slice(-2)}`;
 }
 
 function buildRiderTokenPayload(rider, riderMode) {
@@ -75,31 +73,51 @@ function buildRiderTokenPayload(rider, riderMode) {
     type: "rider",
     name: rider.full_name,
     mode: riderMode || RIDER_MODE.STAFF,
+    phone: normalizePhone(rider.phone || ""),
   };
 }
 
-function buildGuestRiderProfile({ riderId, riderName }) {
-  const alias = String(riderId || "").trim().replace(/\s+/g, " ");
-  const displayName = String(riderName || "").trim() || (alias ? `Guest ${alias}` : "Guest Rider");
-  const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  const suffix = Math.random().toString(36).slice(2, 8);
-  const id = cleanAlias ? `guest-${cleanAlias}-${suffix}` : `guest-${suffix}`;
+function buildGuestRiderProfile({ phone, riderName }) {
+  const normalizedPhone = normalizePhone(phone);
+  const suffix = normalizedPhone.slice(-4) || "0000";
+  const rawName = String(riderName || "").trim();
   return {
-    id,
-    full_name: displayName.slice(0, 120),
+    id: `guest-${normalizedPhone}`,
+    full_name: rawName || `Guest Rider ${suffix}`,
+    phone: normalizedPhone,
   };
 }
 
 function resolveTokenTtlHours(riderMode) {
   const defaultHours = Math.max(1, Number(env.riderJwtTtlHours) || 1);
   if (riderMode !== RIDER_MODE.GUEST) return defaultHours;
-
   const guestOverride = Number(env.riderGuestJwtTtlHours || process.env.RIDER_GUEST_JWT_TTL_HOURS);
   if (Number.isFinite(guestOverride) && guestOverride > 0) {
     return Math.max(1, Math.round(guestOverride));
   }
-
   return Math.min(defaultHours, 4);
+}
+
+function resolveOtpTtlMinutes() {
+  const value = Number(process.env.RIDER_OTP_TTL_MINUTES || 5);
+  return Math.max(2, Math.min(15, Math.floor(value)));
+}
+
+function resolveOtpMaxAttempts() {
+  const value = Number(process.env.RIDER_OTP_MAX_ATTEMPTS || 5);
+  return Math.max(3, Math.min(8, Math.floor(value)));
+}
+
+function addMinutesIso(minutes) {
+  const date = new Date(Date.now() + minutes * 60 * 1000);
+  return date.toISOString();
+}
+
+function isExpiredIso(iso) {
+  if (!iso) return true;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return true;
+  return date.getTime() <= Date.now();
 }
 
 async function logRiderAuthAction({
@@ -131,99 +149,187 @@ function emitRiderRealtimeEvent(eventName, payload = {}) {
   });
 }
 
+async function enforceGuestAccessPolicy() {
+  const persisted = await getGuestRiderAuthSettings();
+  const policy = normalizeGuestPolicy(
+    persisted.loginPolicy || env.riderGuestLoginPolicy || process.env.RIDER_GUEST_LOGIN_POLICY,
+  );
+  if (policy === RIDER_GUEST_POLICIES.DISABLED) {
+    throw Object.assign(new Error("Guest rider access is currently disabled"), { statusCode: 403 });
+  }
+}
+
+async function validateGuestReferralCode(inputCode) {
+  await enforceGuestAccessPolicy();
+  const normalized = String(inputCode || "").trim().toUpperCase();
+  if (!normalized) {
+    throw Object.assign(new Error("Referral code is required for guest riders"), { statusCode: 400 });
+  }
+
+  const code = await getReferralCodeByCode(normalized);
+  if (!code || !code.is_active) {
+    throw Object.assign(new Error("Referral code is invalid or inactive"), { statusCode: 403 });
+  }
+  if (Number.isFinite(code.max_uses) && Number(code.max_uses) > 0 && Number(code.use_count) >= Number(code.max_uses)) {
+    throw Object.assign(new Error("Referral code has reached its usage limit"), { statusCode: 403 });
+  }
+  return code;
+}
+
+function ensureValidPhoneForOtp(phone) {
+  const normalized = normalizePhone(phone);
+  if (normalized.length < 10 || normalized.length > 15) {
+    throw Object.assign(new Error("Phone must be 10-15 digits"), { statusCode: 400 });
+  }
+  return normalized;
+}
+
+async function requestRiderLoginOtp({
+  mode,
+  phone,
+  riderName,
+  referralCode,
+}) {
+  const riderMode = normalizeRiderMode(mode);
+  const normalizedPhone = ensureValidPhoneForOtp(phone);
+  const otpCode = randomDigits(6);
+  const otpTtlMinutes = resolveOtpTtlMinutes();
+  const maxAttempts = resolveOtpMaxAttempts();
+
+  let targetRider = null;
+  let validatedReferral = null;
+  if (riderMode === RIDER_MODE.STAFF) {
+    targetRider = await getRiderByPhone(normalizedPhone);
+    if (!targetRider || !targetRider.is_active) {
+      throw Object.assign(new Error("Staff rider account is not active for this phone"), { statusCode: 401 });
+    }
+    if (String(targetRider.onboarding_status || "onboarded").toLowerCase() === "offboarded") {
+      throw Object.assign(new Error("Rider account is offboarded"), { statusCode: 403 });
+    }
+  } else {
+    validatedReferral = await validateGuestReferralCode(referralCode);
+  }
+
+  const codeHash = await bcrypt.hash(otpCode, 10);
+  const otpRow = await createRiderLoginOtp({
+    phone: normalizedPhone,
+    riderMode,
+    riderId: targetRider?.id || null,
+    referralCode: validatedReferral?.code || null,
+    codeHash,
+    expiresAt: addMinutesIso(otpTtlMinutes),
+    maxAttempts,
+  });
+
+  const msgTarget = targetRider?.full_name
+    ? `Hello ${targetRider.full_name}, `
+    : (riderName ? `Hello ${String(riderName).trim()}, ` : "");
+  const smsMessage = `${msgTarget}your Unilove rider OTP is ${otpCode}. It expires in ${otpTtlMinutes} minutes.`;
+  const smsResult = await sendSms({
+    toPhone: normalizedPhone,
+    message: smsMessage,
+    orderId: null,
+  });
+
+  if (!smsResult.sent && env.nodeEnv !== "test") {
+    throw Object.assign(new Error("Unable to send OTP SMS right now. Please retry."), {
+      statusCode: 502,
+    });
+  }
+
+  await logRiderAuthAction({
+    riderId: targetRider?.id || null,
+    riderMode,
+    action: "RIDER_LOGIN_OTP_REQUESTED",
+    details: {
+      phoneMasked: maskPhone(normalizedPhone),
+      requestId: otpRow.id,
+      referralCode: validatedReferral?.code || null,
+      smsStatus: smsResult.sent ? "sent" : "simulated",
+    },
+  });
+
+  return {
+    requestId: otpRow.id,
+    mode: riderMode,
+    phoneMasked: maskPhone(normalizedPhone),
+    expiresInSeconds: otpTtlMinutes * 60,
+    ...(env.nodeEnv === "test" ? { debugOtpCode: otpCode } : {}),
+  };
+}
+
 async function loginRider({
   mode,
-  riderId,
+  phone,
+  otpCode,
+  requestId,
   riderName,
-  pin,
-  guestAccessCode,
+  referralCode,
   fcmToken,
   deviceId,
   platform,
 }) {
   const riderMode = normalizeRiderMode(mode);
-  const normalizedRiderId = String(riderId || "").trim();
-  const normalizedPin = String(pin || "").trim();
+  const normalizedPhone = ensureValidPhoneForOtp(phone);
+  const normalizedOtp = String(otpCode || "").trim();
+  if (!/^\d{6}$/.test(normalizedOtp)) {
+    throw Object.assign(new Error("otpCode must be a 6-digit code"), { statusCode: 400 });
+  }
+
+  const otpRow = await findLatestOpenRiderLoginOtp({
+    phone: normalizedPhone,
+    riderMode,
+    requestId: String(requestId || "").trim() || null,
+  });
+  if (!otpRow) {
+    throw Object.assign(new Error("OTP request not found. Request a new OTP."), { statusCode: 404 });
+  }
+  if (isExpiredIso(otpRow.expires_at)) {
+    throw Object.assign(new Error("OTP has expired. Request a new OTP."), { statusCode: 410 });
+  }
+  if (Number(otpRow.attempts || 0) >= Number(otpRow.max_attempts || resolveOtpMaxAttempts())) {
+    throw Object.assign(new Error("OTP attempt limit reached. Request a new OTP."), { statusCode: 429 });
+  }
+
+  const validCode = await bcrypt.compare(normalizedOtp, otpRow.code_hash);
+  if (!validCode) {
+    const updated = await incrementRiderLoginOtpAttempts(otpRow.id);
+    const attemptsLeft = Math.max(
+      Number(updated.max_attempts || resolveOtpMaxAttempts()) - Number(updated.attempts || 0),
+      0,
+    );
+    throw Object.assign(new Error(`Invalid OTP. Attempts left: ${attemptsLeft}`), { statusCode: 401 });
+  }
+
+  await consumeRiderLoginOtp(otpRow.id);
   const ttlHours = resolveTokenTtlHours(riderMode);
   const expiresIn = `${ttlHours}h`;
 
-  if (riderMode === RIDER_MODE.GUEST) {
-    await enforceGuestPolicy({ guestAccessCode });
-
-    const guestRider = buildGuestRiderProfile({
-      riderId: normalizedRiderId,
+  let riderProfile = null;
+  let validatedReferral = null;
+  if (riderMode === RIDER_MODE.STAFF) {
+    riderProfile = await getRiderByPhone(normalizedPhone);
+    if (!riderProfile || !riderProfile.is_active) {
+      throw Object.assign(new Error("Staff rider account is not active for this phone"), { statusCode: 401 });
+    }
+    if (String(riderProfile.onboarding_status || "onboarded").toLowerCase() === "offboarded") {
+      throw Object.assign(new Error("Rider account is offboarded"), { statusCode: 403 });
+    }
+    await touchRiderLogin(riderProfile.id);
+  } else {
+    validatedReferral = await validateGuestReferralCode(referralCode || otpRow.referral_code);
+    await incrementReferralCodeUsage(validatedReferral.id);
+    riderProfile = buildGuestRiderProfile({
+      phone: normalizedPhone,
       riderName,
     });
-    const token = jwt.sign(buildRiderTokenPayload(guestRider, riderMode), env.jwtSecret, { expiresIn });
-
-    const presence = await markRiderPresence({
-      riderId: guestRider.id,
-      mode: riderMode,
-      displayName: guestRider.full_name,
-      shiftStatus: SHIFT_STATUS.ONLINE,
-      markLogin: true,
-      markSeen: true,
-    });
-
-    if (fcmToken) {
-      await upsertRiderDeviceToken({
-        riderId: guestRider.id,
-        riderMode,
-        token: fcmToken,
-        deviceId,
-        platform: platform || "android",
-      });
-    }
-
-    await logRiderAuthAction({
-      riderId: guestRider.id,
-      riderMode,
-      action: "RIDER_LOGIN_SUCCESS",
-      details: {
-        shiftStatus: SHIFT_STATUS.ONLINE,
-        hasDeviceToken: Boolean(fcmToken),
-      },
-    });
-    emitRiderRealtimeEvent("rider.presence", {
-      riderId: guestRider.id,
-      mode: riderMode,
-      shiftStatus: SHIFT_STATUS.ONLINE,
-      hasDeviceToken: Boolean(fcmToken),
-      updatedAt: presence?.updated_at || null,
-    });
-
-    return {
-      token,
-      expiresInSeconds: ttlHours * 60 * 60,
-      rider: {
-        id: guestRider.id,
-        fullName: guestRider.full_name,
-        mode: riderMode,
-        shiftStatus: SHIFT_STATUS.ONLINE,
-      },
-    };
   }
 
-  if (!normalizedRiderId || !normalizedPin) {
-    throw Object.assign(new Error("riderId and pin are required"), { statusCode: 400 });
-  }
-
-  const rider = await getRiderById(normalizedRiderId);
-  if (!rider || !rider.is_active) {
-    throw Object.assign(new Error("Invalid rider credentials"), { statusCode: 401 });
-  }
-
-  const isPinValid = await bcrypt.compare(normalizedPin, rider.pin_hash);
-  if (!isPinValid) {
-    throw Object.assign(new Error("Invalid rider credentials"), { statusCode: 401 });
-  }
-
-  const token = jwt.sign(buildRiderTokenPayload(rider, riderMode), env.jwtSecret, { expiresIn });
-
+  const token = jwt.sign(buildRiderTokenPayload(riderProfile, riderMode), env.jwtSecret, { expiresIn });
   const presence = await markRiderPresence({
-    riderId: rider.id,
+    riderId: riderProfile.id,
     mode: riderMode,
-    displayName: rider.full_name,
+    displayName: riderProfile.full_name,
     shiftStatus: SHIFT_STATUS.ONLINE,
     markLogin: true,
     markSeen: true,
@@ -231,7 +337,7 @@ async function loginRider({
 
   if (fcmToken) {
     await upsertRiderDeviceToken({
-      riderId: rider.id,
+      riderId: riderProfile.id,
       riderMode,
       token: fcmToken,
       deviceId,
@@ -240,16 +346,18 @@ async function loginRider({
   }
 
   await logRiderAuthAction({
-    riderId: rider.id,
+    riderId: riderProfile.id,
     riderMode,
     action: "RIDER_LOGIN_SUCCESS",
     details: {
       shiftStatus: SHIFT_STATUS.ONLINE,
+      phoneMasked: maskPhone(normalizedPhone),
+      referralCode: validatedReferral?.code || null,
       hasDeviceToken: Boolean(fcmToken),
     },
   });
   emitRiderRealtimeEvent("rider.presence", {
-    riderId: rider.id,
+    riderId: riderProfile.id,
     mode: riderMode,
     shiftStatus: SHIFT_STATUS.ONLINE,
     hasDeviceToken: Boolean(fcmToken),
@@ -260,8 +368,9 @@ async function loginRider({
     token,
     expiresInSeconds: ttlHours * 60 * 60,
     rider: {
-      id: rider.id,
-      fullName: rider.full_name,
+      id: riderProfile.id,
+      fullName: riderProfile.full_name,
+      phone: normalizedPhone,
       mode: riderMode,
       shiftStatus: SHIFT_STATUS.ONLINE,
     },
@@ -316,6 +425,9 @@ async function ensureRiderCanShiftOnline({ riderId, riderMode }) {
   if (!rider || !rider.is_active) {
     throw Object.assign(new Error("Staff rider account is not active"), { statusCode: 403 });
   }
+  if (String(rider.onboarding_status || "onboarded").toLowerCase() === "offboarded") {
+    throw Object.assign(new Error("Staff rider account is offboarded"), { statusCode: 403 });
+  }
 }
 
 async function setRiderShiftStatus({
@@ -332,9 +444,6 @@ async function setRiderShiftStatus({
 
   const normalizedMode = normalizeRiderMode(riderMode);
   const normalizedShiftStatus = normalizeShiftStatus(shiftStatus, SHIFT_STATUS.ONLINE);
-  if (![SHIFT_STATUS.ONLINE, SHIFT_STATUS.OFFLINE].includes(normalizedShiftStatus)) {
-    throw Object.assign(new Error("shiftStatus must be online or offline"), { statusCode: 400 });
-  }
 
   if (normalizedShiftStatus === SHIFT_STATUS.ONLINE) {
     await ensureRiderCanShiftOnline({
@@ -412,6 +521,7 @@ async function getRiderRosterSnapshot() {
 }
 
 module.exports = {
+  requestRiderLoginOtp,
   loginRider,
   registerRiderDeviceToken,
   setRiderShiftStatus,
