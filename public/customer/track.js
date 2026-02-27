@@ -214,6 +214,7 @@ function renderTracking(data) {
   setText("deliveryTypeValue", toTitle(data.deliveryType || "-"));
   setText("sourceValue", toTitle(data.source || "-"));
   setText("paymentMethodValue", toTitle(data.paymentMethod || "-"));
+  setText("paymentStatusValue", data.paymentStatus || "-");
   setText("subtotalValue", subtotalValue);
   setText("etaValue", etaValue);
   setText("customerNameValue", data.customerName || "-");

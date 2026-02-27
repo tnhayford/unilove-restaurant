@@ -99,6 +99,11 @@ async function bootstrapUssdTestDb() {
   ({ handleUssdRequest } = require(path.join(ROOT, "src/services/ussdService.js")));
 }
 
+async function getDbHandle() {
+  const { getDb } = require(path.join(ROOT, "src/db/connection.js"));
+  return getDb();
+}
+
 function payload({
   type = "Response",
   message = "",
@@ -350,6 +355,37 @@ describe("USSD customer ordering flow", () => {
       }),
     );
     expect(Number(paymentScreen.Item.Price || 0)).toBeGreaterThan(0);
+  });
+
+  it("supports delivery cash-on-delivery checkout without momo prompt", async () => {
+    const sessionId = "sess-cod-delivery";
+
+    await handleUssdRequest(payload({ type: "Initiation", sessionId }));
+    await handleUssdRequest(payload({ sessionId, message: "1" }));
+    await handleUssdRequest(payload({ sessionId, message: "1" }));
+    await handleUssdRequest(payload({ sessionId, message: "1" }));
+    await handleUssdRequest(payload({ sessionId, message: "1" }));
+    await handleUssdRequest(payload({ sessionId, message: "2" }));
+    await handleUssdRequest(payload({ sessionId, message: "John Cash" }));
+    await handleUssdRequest(payload({ sessionId, message: "2" }));
+    await handleUssdRequest(payload({ sessionId, message: "KNUST Main Gate" }));
+
+    const codConfirm = await handleUssdRequest(payload({ sessionId, message: "2" }));
+
+    expect(codConfirm.Type).toBe("release");
+    expect(codConfirm.Message).toContain("cash on delivery");
+    expect(codConfirm.Message).toContain("Order R");
+
+    const db = await getDbHandle();
+    const order = await db.get(
+      `SELECT status, payment_method, payment_status
+       FROM orders
+       WHERE hubtel_session_id = ?`,
+      [sessionId],
+    );
+    expect(order?.status).toBe("PAID");
+    expect(order?.payment_method).toBe("cash_on_delivery");
+    expect(order?.payment_status).toBe("PENDING");
   });
 
   it("offers resume on new session after timeout", async () => {

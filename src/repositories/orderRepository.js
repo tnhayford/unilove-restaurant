@@ -7,8 +7,8 @@ async function createOrder(order, dbOverride = null) {
     `INSERT INTO orders (
       id, customer_id, phone, full_name, delivery_type, address,
       status, subtotal_cedis, hubtel_session_id, client_reference,
-      order_number, source, payment_method
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+      order_number, source, payment_method, payment_status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
     [
       order.id,
       order.customerId,
@@ -23,6 +23,7 @@ async function createOrder(order, dbOverride = null) {
       order.orderNumber,
       order.source || "online",
       order.paymentMethod || "momo",
+      order.paymentStatus || "PENDING",
     ],
   );
 }
@@ -134,7 +135,7 @@ function buildOrderHistoryFilters(filters = {}) {
     const likeValue = `%${filters.searchText}%`;
     params.push(likeValue, likeValue, likeValue);
   }
-  if (filters.paymentIssueOnly) {
+      if (filters.paymentIssueOnly) {
     clauses.push("status IN ('PENDING_PAYMENT', 'PAYMENT_FAILED', 'REFUNDED')");
   }
   if (filters.delayedOnly) {
@@ -169,6 +170,7 @@ async function listOrderHistory(filters = {}) {
        source,
        delivery_type,
        payment_method,
+       payment_status,
        status,
        cancel_reason,
        subtotal_cedis,
@@ -223,6 +225,8 @@ async function listPendingOrdersOlderThan(minutes) {
     `SELECT *
      FROM orders
      WHERE status = 'PENDING_PAYMENT'
+       AND payment_method = 'momo'
+       AND COALESCE(payment_status, 'PENDING') = 'PENDING'
        AND datetime(created_at) <= datetime('now', ?)
      ORDER BY datetime(created_at) ASC
      LIMIT 200`,
@@ -258,6 +262,26 @@ async function setPaymentConfirmedAt(orderId) {
      SET payment_confirmed_at = datetime('now'), updated_at = datetime('now')
      WHERE id = ?`,
     [orderId],
+  );
+}
+
+async function setPaymentStatus(orderId, paymentStatus, options = {}) {
+  const db = await getDb();
+  const normalized = String(paymentStatus || "").trim().toUpperCase();
+  const allowed = new Set(["PENDING", "PAID", "FAILED"]);
+  const nextStatus = allowed.has(normalized) ? normalized : "PENDING";
+  const markConfirmedAt = options.markConfirmedAt === true ? 1 : 0;
+
+  await db.run(
+    `UPDATE orders
+     SET payment_status = ?,
+         payment_confirmed_at = CASE
+           WHEN ? = 1 THEN COALESCE(payment_confirmed_at, datetime('now'))
+           ELSE payment_confirmed_at
+         END,
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [nextStatus, markConfirmedAt, orderId],
   );
 }
 
@@ -317,6 +341,7 @@ module.exports = {
   getOrderItems,
   updateOrderStatus,
   setPaymentConfirmedAt,
+  setPaymentStatus,
   setReturnedRider,
   setAssignedRider,
   setOpsMonitoredAt,

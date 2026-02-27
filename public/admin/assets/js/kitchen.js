@@ -48,6 +48,8 @@ function normalizeOrder(raw) {
     customerName: String(raw.full_name || raw.fullName || "Guest").trim(),
     deliveryType: String(raw.delivery_type || raw.deliveryType || "pickup").trim().toLowerCase() || "pickup",
     source: String(raw.source || "online").trim().toLowerCase() || "online",
+    paymentMethod: String(raw.payment_method || raw.paymentMethod || "momo").trim().toLowerCase() || "momo",
+    paymentStatus: String(raw.payment_status || raw.paymentStatus || "PENDING").trim().toUpperCase() || "PENDING",
     status: normalizeStatus(raw.status),
     opsMonitoredAt: raw.ops_monitored_at || raw.opsMonitoredAt || null,
   };
@@ -108,7 +110,28 @@ function isKitchenAlertCandidate(order) {
   if (!order) return false;
   if (order.status !== "PAID") return false;
   if (!["online", "ussd"].includes(order.source)) return false;
+  const prepaidCaptured = order.paymentStatus === "PAID";
+  const codPending = order.paymentMethod === "cash_on_delivery" && order.paymentStatus === "PENDING";
+  if (!prepaidCaptured && !codPending) return false;
   return !String(order.opsMonitoredAt || "").trim();
+}
+
+function paymentMethodLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (token === "cash_on_delivery") return "Cash on delivery";
+  if (token === "momo") return "MoMo";
+  if (token === "cash") return "Cash";
+  return token || "Unknown";
+}
+
+function paymentStatusLabel(value, paymentMethod) {
+  const token = String(value || "").trim().toUpperCase();
+  if (token === "PAID") return "Paid";
+  if (token === "FAILED") return "Failed";
+  if (String(paymentMethod || "").trim().toLowerCase() === "cash_on_delivery") {
+    return "Collect on delivery";
+  }
+  return "Pending";
 }
 
 function playAlertOnce(volume) {
@@ -172,6 +195,7 @@ function renderLane(laneId, countId, orders, kind) {
         </div>
         <div class="order-collapse" style="display:block;">
           <div class="order-meta">Source: ${escapeHtml(order.source)}</div>
+          <div class="order-meta">Payment: ${escapeHtml(paymentMethodLabel(order.paymentMethod))} • ${escapeHtml(paymentStatusLabel(order.paymentStatus, order.paymentMethod))}</div>
           <div class="order-actions-row">
             <button class="btn btn-sm primary" data-role="kitchen-open" data-order-id="${escapeHtml(order.id)}">
               Open

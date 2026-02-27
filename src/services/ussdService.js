@@ -494,6 +494,7 @@ function baseState(closedPatch) {
     customerName: null,
     deliveryType: null,
     address: null,
+    paymentMethod: null,
     ...(closedPatch || {}),
   };
 }
@@ -923,10 +924,20 @@ async function showReviewPage(payload, stateData, prefix = "") {
     return showCartPage(payload, stateData, stateData.cartPage || 0, "Cart is empty.");
   }
 
+  const isDelivery = stateData.deliveryType === "delivery";
+  const selectedPaymentMethod = String(stateData.paymentMethod || "").trim().toLowerCase();
+  let paymentLabel = "MoMo now";
+  if (isDelivery && selectedPaymentMethod === "cash_on_delivery") {
+    paymentLabel = "Cash on delivery";
+  } else if (isDelivery && !selectedPaymentMethod) {
+    paymentLabel = "Choose at confirm";
+  }
+
   const body = [
     `Items: ${cart.length}`,
     `Total: GHS ${formatMoney(calculateCartTotal(cart))}`,
     `Type: ${deliveryLabel(stateData.deliveryType)}`,
+    `Payment: ${paymentLabel}`,
   ];
   if (stateData.deliveryType === "delivery") {
     body.push(`Address: ${truncate(stateData.address || "Unknown", 28)}`);
@@ -939,7 +950,9 @@ async function showReviewPage(payload, stateData, prefix = "") {
       title: "Review order",
       notice: prefix,
       body,
-      menu: ["1. Confirm & Pay", "2. Edit cart", "0. Cancel"],
+      menu: isDelivery
+        ? ["1. Pay with MoMo", "2. Cash on delivery", "3. Edit cart", "0. Cancel"]
+        : ["1. Confirm & Pay", "2. Edit cart", "0. Cancel"],
     }),
     clientState: STATE.REVIEW,
   });
@@ -1014,13 +1027,16 @@ async function showResumePrompt(payload, stateData, prefix = "") {
   });
 }
 
-async function finalizeOrder(payload, stateData) {
+async function finalizeOrder(payload, stateData, paymentMethodInput = "momo") {
   const cart = stateData.cart || [];
   if (!cart.length) {
     return showCartPage(payload, stateData, 0, "Cart is empty.");
   }
 
   const fullName = normalizeName(stateData.customerName) || `USSD Customer ${String(payload.Mobile).slice(-4)}`;
+  const paymentMethod = String(paymentMethodInput || "").trim().toLowerCase() === "cash_on_delivery"
+    ? "cash_on_delivery"
+    : "momo";
 
   const order = await createOrderFromRequest({
     phone: payload.Mobile,
@@ -1034,9 +1050,18 @@ async function finalizeOrder(payload, stateData) {
     hubtelSessionId: payload.SessionId,
     clientReference: payload.SessionId,
     source: "ussd",
+    paymentMethod,
   });
 
   await deleteSession(payload.SessionId);
+
+  if (paymentMethod === "cash_on_delivery") {
+    return responseBody({
+      sessionId: payload.SessionId,
+      type: "release",
+      message: `Order ${order.orderNumber} confirmed for cash on delivery. Please keep your phone on for rider updates.`,
+    });
+  }
 
   return responseBody({
     sessionId: payload.SessionId,
@@ -1536,10 +1561,29 @@ async function handleAddressInput(payload, stateData, input) {
 
 async function handleReviewSelection(payload, stateData, input) {
   if (input === "0") return showMain(payload, stateData);
-  if (input === "2") return showCartPage(payload, stateData, stateData.cartPage || 0);
+  const isDelivery = stateData.deliveryType === "delivery";
+
+  if ((!isDelivery && input === "2") || (isDelivery && input === "3")) {
+    return showCartPage(payload, stateData, stateData.cartPage || 0);
+  }
+
   if (input === "1") {
     try {
-      return await finalizeOrder(payload, stateData);
+      return await finalizeOrder(payload, {
+        ...stateData,
+        paymentMethod: "momo",
+      }, "momo");
+    } catch (_error) {
+      return showReviewPage(payload, stateData, "Order failed. Retry.");
+    }
+  }
+
+  if (isDelivery && input === "2") {
+    try {
+      return await finalizeOrder(payload, {
+        ...stateData,
+        paymentMethod: "cash_on_delivery",
+      }, "cash_on_delivery");
     } catch (_error) {
       return showReviewPage(payload, stateData, "Order failed. Retry.");
     }

@@ -167,6 +167,11 @@ function isAlertCandidateOrder(order) {
   if (normalizeStatus(order.status) !== "PAID") return false;
   const source = String(order.source || "").trim().toLowerCase();
   if (!["online", "ussd"].includes(source)) return false;
+  const paymentMethod = String(order.paymentMethod || "momo").trim().toLowerCase();
+  const paymentStatus = String(order.paymentStatus || "PENDING").trim().toUpperCase();
+  const prepaidCaptured = paymentStatus === "PAID";
+  const codPending = paymentMethod === "cash_on_delivery" && paymentStatus === "PENDING";
+  if (!prepaidCaptured && !codPending) return false;
   return !String(order.opsMonitoredAt || "").trim();
 }
 
@@ -297,10 +302,30 @@ function stageFromStatus(status) {
   }
 }
 
+function paymentMethodLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (token === "cash_on_delivery") return "Cash on delivery";
+  if (token === "momo") return "MoMo";
+  if (token === "cash") return "Cash";
+  return token || "Unknown";
+}
+
+function paymentStatusLabel(value, paymentMethod) {
+  const token = String(value || "").trim().toUpperCase();
+  if (token === "PAID") return "Paid";
+  if (token === "FAILED") return "Failed";
+  if (String(paymentMethod || "").trim().toLowerCase() === "cash_on_delivery") {
+    return "Collect on delivery";
+  }
+  return "Pending";
+}
+
 function normalizeOrder(raw) {
   const status = normalizeStatus(raw.status);
   const ageMinutes = ageMinutesFromOrder(raw);
   const deliveryType = String(raw.delivery_type || raw.deliveryType || "pickup").toLowerCase();
+  const paymentMethod = String(raw.payment_method || raw.paymentMethod || "momo").trim().toLowerCase() || "momo";
+  const paymentStatus = String(raw.payment_status || raw.paymentStatus || "PENDING").trim().toUpperCase() || "PENDING";
   return {
     id: String(raw.id || ""),
     orderNumber: String(raw.order_number || raw.orderNumber || "-").trim(),
@@ -308,6 +333,8 @@ function normalizeOrder(raw) {
     phone: String(raw.phone || "").trim(),
     source: String(raw.source || "online").trim().toLowerCase() || "online",
     deliveryType,
+    paymentMethod,
+    paymentStatus,
     address: String(raw.address || "").trim(),
     status,
     assignedRiderId: String(raw.assigned_rider_id || raw.assignedRiderId || "").trim() || null,
@@ -320,6 +347,7 @@ function normalizeOrder(raw) {
     updatedAt: raw.updated_at || raw.updatedAt || null,
     cancelReason: raw.cancel_reason || raw.cancelReason || "",
     opsMonitoredAt: raw.ops_monitored_at || raw.opsMonitoredAt || null,
+    paymentConfirmedAt: raw.payment_confirmed_at || raw.paymentConfirmedAt || null,
     availableActions: Array.isArray(raw.availableActions) ? raw.availableActions : [],
   };
 }
@@ -461,6 +489,7 @@ function renderOrderCard(order) {
   const expanded = state.expandedOrderIds.has(order.id);
   const isDeliveryOrder = order.deliveryType === "delivery";
   const assignedLabel = isDeliveryOrder ? getAssignedRiderLabel(order) : "Not required";
+  const paymentLabel = `${paymentMethodLabel(order.paymentMethod)} • ${paymentStatusLabel(order.paymentStatus, order.paymentMethod)}`;
 
   return `
     <article class="${orderCardClass(order)} ${expanded ? "" : "is-collapsed"}" data-order-id="${escapeHtml(order.id)}">
@@ -484,6 +513,7 @@ function renderOrderCard(order) {
       <div class="order-collapse">
         <div class="order-meta">Assigned rider: ${escapeHtml(assignedLabel)}</div>
         <div class="order-meta">Source: ${escapeHtml(order.source || "online")}</div>
+        <div class="order-meta">Payment: ${escapeHtml(paymentLabel)}</div>
         <div class="order-actions-row" style="margin-top: 8px;">
           <button
             type="button"

@@ -7,6 +7,24 @@ function toLocalDateTime(value) {
   return new Date(`${value}Z`).toLocaleString();
 }
 
+function paymentMethodLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (token === "cash_on_delivery") return "Cash on delivery";
+  if (token === "momo") return "MoMo";
+  if (token === "cash") return "Cash";
+  return token || "Unknown";
+}
+
+function paymentStatusLabel(value, paymentMethod) {
+  const token = String(value || "").trim().toUpperCase();
+  if (token === "PAID") return "Paid";
+  if (token === "FAILED") return "Failed";
+  if (String(paymentMethod || "").trim().toLowerCase() === "cash_on_delivery") {
+    return "Collect on delivery";
+  }
+  return "Pending";
+}
+
 function getTotalPages() {
   return Math.max(1, Math.ceil(totalRows / pageSize));
 }
@@ -46,7 +64,7 @@ function renderRows(rows) {
 
   if (!rows || !rows.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="8" class="order-meta">No orders match the current filter.</td>';
+    tr.innerHTML = '<td colspan="9" class="order-meta">No orders match the current filter.</td>';
     tbody.appendChild(tr);
     return;
   }
@@ -63,6 +81,7 @@ function renderRows(rows) {
       <td>${e(order.source)}</td>
       <td>${e(order.delivery_type)}</td>
       <td>${e(order.status)}${order.cancel_reason ? `<br /><span class="order-meta">${e(order.cancel_reason)}</span>` : ""}</td>
+      <td>${e(paymentMethodLabel(order.payment_method))}<br /><span class="order-meta">${e(paymentStatusLabel(order.payment_status, order.payment_method))}</span></td>
       <td>${order.ageMinutes || 0}m</td>
       <td>GHS ${AdminCore.money(order.subtotal_cedis)}</td>
       <td>${e(toLocalDateTime(order.created_at))}</td>

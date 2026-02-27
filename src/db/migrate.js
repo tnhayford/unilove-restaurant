@@ -97,6 +97,7 @@ async function runMigrations() {
       order_number TEXT,
       source TEXT NOT NULL DEFAULT 'online',
       payment_method TEXT NOT NULL DEFAULT 'momo',
+      payment_status TEXT NOT NULL DEFAULT 'PENDING',
       ops_monitored_at TEXT,
       payment_confirmed_at TEXT,
       assigned_rider_id TEXT,
@@ -447,6 +448,7 @@ async function runMigrations() {
   await ensureColumn(db, "orders", "order_number", "TEXT");
   await ensureColumn(db, "orders", "source", "TEXT NOT NULL DEFAULT 'online'");
   await ensureColumn(db, "orders", "payment_method", "TEXT NOT NULL DEFAULT 'momo'");
+  await ensureColumn(db, "orders", "payment_status", "TEXT NOT NULL DEFAULT 'PENDING'");
   await ensureColumn(db, "orders", "ops_monitored_at", "TEXT");
   await ensureColumn(db, "orders", "assigned_rider_id", "TEXT");
   await ensureColumn(db, "orders", "cancel_reason", "TEXT");
@@ -457,6 +459,9 @@ async function runMigrations() {
   await ensureColumn(db, "menu_items", "ussd_is_visible", "INTEGER NOT NULL DEFAULT 1");
   await db.exec(
     "CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_order_number ON orders(order_number);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);",
   );
   await db.exec(
     "CREATE INDEX IF NOT EXISTS idx_orders_assigned_rider_status ON orders(assigned_rider_id, status);",
@@ -487,6 +492,28 @@ async function runMigrations() {
        ELSE 'momo'
      END
      WHERE payment_method IS NULL OR TRIM(payment_method) = ''`,
+  );
+
+  await db.run(
+    `UPDATE orders
+     SET payment_status = CASE
+       WHEN LOWER(TRIM(payment_method)) = 'cash_on_delivery' THEN
+         CASE
+           WHEN payment_confirmed_at IS NOT NULL THEN 'PAID'
+           WHEN status IN ('DELIVERED', 'REFUNDED') THEN 'PAID'
+           ELSE 'PENDING'
+         END
+       WHEN LOWER(TRIM(payment_method)) = 'cash' THEN 'PAID'
+       WHEN status = 'PAYMENT_FAILED' THEN 'FAILED'
+       WHEN payment_confirmed_at IS NOT NULL THEN 'PAID'
+       WHEN LOWER(TRIM(payment_method)) = 'momo'
+         AND status IN ('PAID', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'RETURNED', 'REFUNDED')
+         THEN 'PAID'
+       ELSE 'PENDING'
+     END
+     WHERE payment_status IS NULL
+       OR TRIM(payment_status) = ''
+       OR UPPER(TRIM(payment_status)) NOT IN ('PENDING', 'PAID', 'FAILED')`,
   );
 
   await db.run(

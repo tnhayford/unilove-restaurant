@@ -15,6 +15,7 @@ const orderCreateSchema = z
     fullName: z.string().trim().min(2).max(120),
     deliveryType: z.enum(["pickup", "delivery"]),
     address: z.string().trim().min(4).max(300).optional(),
+    paymentMethod: z.enum(["momo", "cash_on_delivery"]).optional().default("momo"),
     items: z
       .array(
         z.object({
@@ -30,6 +31,13 @@ const orderCreateSchema = z
         code: z.ZodIssueCode.custom,
         message: "address is required for delivery orders",
         path: ["address"],
+      });
+    }
+    if (value.paymentMethod === "cash_on_delivery" && value.deliveryType !== "delivery") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "cash_on_delivery is only available for delivery orders",
+        path: ["paymentMethod"],
       });
     }
   });

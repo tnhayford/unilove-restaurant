@@ -24,6 +24,24 @@ function formatDate(timestamp) {
   return new Date(`${timestamp}Z`).toLocaleString();
 }
 
+function paymentMethodLabel(value) {
+  const token = String(value || "").trim().toLowerCase();
+  if (token === "cash_on_delivery") return "Cash on delivery";
+  if (token === "momo") return "MoMo";
+  if (token === "cash") return "Cash";
+  return token || "Unknown";
+}
+
+function paymentStatusLabel(value, paymentMethod) {
+  const token = String(value || "").trim().toUpperCase();
+  if (token === "PAID") return "Paid";
+  if (token === "FAILED") return "Failed";
+  if (String(paymentMethod || "").trim().toLowerCase() === "cash_on_delivery") {
+    return "Collect on delivery";
+  }
+  return "Pending";
+}
+
 function renderItems(items) {
   const e = AdminCore.escapeHtml;
   const tbody = document.getElementById("itemRows");
@@ -66,6 +84,8 @@ function renderSummary(order) {
     ["Stage", order.stageLabel || order.status],
     ["Delivery Type", order.delivery_type],
     ["Source", order.source || "online"],
+    ["Payment Method", paymentMethodLabel(order.payment_method)],
+    ["Payment Status", paymentStatusLabel(order.payment_status, order.payment_method)],
     ["Address", order.address || "N/A"],
     ["Assigned Rider", order.assigned_rider_id || "Unassigned"],
     ["Cancel Reason", order.cancel_reason || "N/A"],

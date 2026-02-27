@@ -15,7 +15,7 @@ const {
   listOrderHistory,
   getOrderItems,
   updateOrderStatus,
-  setPaymentConfirmedAt,
+  setPaymentStatus,
   setAssignedRider,
   setOpsMonitoredAt,
 } = require("../repositories/orderRepository");
@@ -54,6 +54,18 @@ const ORDER_ACTION = {
   MARK_RETURNED: "MARK_RETURNED",
   ISSUE_REFUND: "ISSUE_REFUND",
   CANCEL_ORDER: "CANCEL_ORDER",
+};
+
+const PAYMENT_METHOD = {
+  MOMO: "momo",
+  CASH: "cash",
+  CASH_ON_DELIVERY: "cash_on_delivery",
+};
+
+const PAYMENT_STATUS = {
+  PENDING: "PENDING",
+  PAID: "PAID",
+  FAILED: "FAILED",
 };
 
 const TRACKING_TOKEN_LENGTH = 24;
@@ -120,6 +132,50 @@ const PAYMENT_FAILURE_HINTS = [
     message: "Prompt timed out before confirmation.",
   },
 ];
+
+function normalizePaymentMethod(input, options = {}) {
+  const source = String(options.source || "").trim().toLowerCase();
+  const deliveryType = String(options.deliveryType || "").trim().toLowerCase();
+  const token = String(input || "").trim().toLowerCase();
+
+  if (token === PAYMENT_METHOD.CASH_ON_DELIVERY || token === "cod") {
+    return PAYMENT_METHOD.CASH_ON_DELIVERY;
+  }
+  if (token === PAYMENT_METHOD.CASH) {
+    if (source === "instore") return PAYMENT_METHOD.CASH;
+    if (deliveryType === "delivery") return PAYMENT_METHOD.CASH_ON_DELIVERY;
+    return PAYMENT_METHOD.CASH;
+  }
+  return PAYMENT_METHOD.MOMO;
+}
+
+function initialPaymentStatusForMethod(paymentMethod) {
+  if (paymentMethod === PAYMENT_METHOD.MOMO) return PAYMENT_STATUS.PENDING;
+  if (paymentMethod === PAYMENT_METHOD.CASH_ON_DELIVERY) return PAYMENT_STATUS.PENDING;
+  return PAYMENT_STATUS.PAID;
+}
+
+function initialOrderStatusForMethod(paymentMethod) {
+  if (paymentMethod === PAYMENT_METHOD.MOMO) {
+    return ORDER_STATUS.PENDING_PAYMENT;
+  }
+  return ORDER_STATUS.PAID;
+}
+
+function isCapturedPaymentMethod(paymentMethod) {
+  return paymentMethod === PAYMENT_METHOD.MOMO || paymentMethod === PAYMENT_METHOD.CASH;
+}
+
+function paymentStatusLabel(paymentStatus) {
+  switch (String(paymentStatus || "").trim().toUpperCase()) {
+    case PAYMENT_STATUS.PAID:
+      return "Paid";
+    case PAYMENT_STATUS.FAILED:
+      return "Failed";
+    default:
+      return "Pending";
+  }
+}
 
 function toLineItems(requestedItems, menuItems) {
   const menuMap = new Map(menuItems.map((item) => [item.id, item]));
@@ -645,16 +701,26 @@ function buildTrackingUrl(order) {
 }
 
 function buildCreatedSmsMessage(order, slaConfig) {
-  const trackingUrl = buildTrackingUrl(order);
-  const etaMinutes = etaMinutesFromSla(order.delivery_type, slaConfig, {
-    includePendingPayment: true,
+  const paymentMethod = normalizePaymentMethod(order.payment_method, {
+    source: order.source,
+    deliveryType: order.delivery_type,
   });
-  const etaText = `${
+  const trackingUrl = buildTrackingUrl(order);
+  const includePendingPayment = paymentMethod === PAYMENT_METHOD.MOMO;
+  const etaMinutes = etaMinutesFromSla(order.delivery_type, slaConfig, { includePendingPayment });
+  const etaPrefix = `${
     String(order.delivery_type || "").toLowerCase() === "delivery" ? "Delivery" : "Pickup"
-  } ETA ${formatEtaDuration(etaMinutes)} after payment`;
-  if (String(order.source || "").toLowerCase() === "ussd") {
+  } ETA ${formatEtaDuration(etaMinutes)}`;
+  const etaText = includePendingPayment ? `${etaPrefix} after payment` : etaPrefix;
+
+  if (paymentMethod === PAYMENT_METHOD.CASH_ON_DELIVERY) {
+    return `Unilove: Order ${order.order_number} confirmed. Pay cash on delivery at handover. ${etaText}. Track: ${trackingUrl}`;
+  }
+
+  if (String(order.source || "").toLowerCase() === "ussd" && paymentMethod === PAYMENT_METHOD.MOMO) {
     return `Unilove: Order ${order.order_number} received. Complete MoMo prompt with PIN. ${etaText}. Track: ${trackingUrl}`;
   }
+
   return `Unilove: Order ${order.order_number} received. ${etaText}. Track: ${trackingUrl}`;
 }
 
@@ -736,6 +802,8 @@ async function createOrderFromRequest(payload) {
         deliveryType: existingByReference.delivery_type,
         address: existingByReference.address || null,
         status: existingByReference.status,
+        paymentMethod: existingByReference.payment_method || PAYMENT_METHOD.MOMO,
+        paymentStatus: existingByReference.payment_status || PAYMENT_STATUS.PENDING,
         subtotalCedis: Number(existingByReference.subtotal_cedis || 0),
         items: existingItems.map((item) => ({
           itemId: item.item_id,
@@ -768,6 +836,13 @@ async function createOrderFromRequest(payload) {
   const orderId = uuidv4();
   const clientReference =
     payload.clientReference || uuidv4().replace(/-/g, "").slice(0, 30);
+  const source = payload.source || "online";
+  const paymentMethod = normalizePaymentMethod(payload.paymentMethod, {
+    source,
+    deliveryType: payload.deliveryType,
+  });
+  const paymentStatus = initialPaymentStatusForMethod(paymentMethod);
+  const initialOrderStatus = initialOrderStatusForMethod(paymentMethod);
 
   await runInWriteTransaction(async (db) => {
     const orderNumber = await generateNextOrderNumber(db);
@@ -779,21 +854,24 @@ async function createOrderFromRequest(payload) {
       fullName: payload.fullName,
       deliveryType: payload.deliveryType,
       address: payload.address,
-      status: ORDER_STATUS.PENDING_PAYMENT,
+      status: initialOrderStatus,
       subtotal,
       hubtelSessionId: payload.hubtelSessionId || null,
       clientReference,
       orderNumber,
-      source: payload.source || "online",
-      paymentMethod: payload.paymentMethod || "momo",
+      source,
+      paymentMethod,
+      paymentStatus,
     }, db);
 
     await createOrderItems(orderId, lineItems, db);
-    await insertPendingPayment({
-      orderId,
-      clientReference,
-      amount: subtotal,
-    }, db);
+    if (paymentMethod === PAYMENT_METHOD.MOMO) {
+      await insertPendingPayment({
+        orderId,
+        clientReference,
+        amount: subtotal,
+      }, db);
+    }
   });
 
   await logSensitiveAction({
@@ -806,12 +884,19 @@ async function createOrderFromRequest(payload) {
       deliveryType: payload.deliveryType,
       subtotal,
       itemCount: lineItems.length,
+      paymentMethod,
+      paymentStatus,
     },
   });
 
+  if (initialOrderStatus === ORDER_STATUS.PAID && isCapturedPaymentMethod(paymentMethod)) {
+    await setPaymentStatus(orderId, PAYMENT_STATUS.PAID, { markConfirmedAt: true });
+    await issueLoyaltyForPaidOrder(orderId);
+  }
+
   const createdOrder = await getOrderById(orderId);
   publishOrderRealtimeEvent("order.created", createdOrder, {
-    source: payload.source || "online",
+    source,
   });
 
   let slaConfig = DEFAULT_SLA_CONFIG;
@@ -858,7 +943,9 @@ async function createOrderFromRequest(payload) {
     fullName: payload.fullName,
     deliveryType: payload.deliveryType,
     address: payload.address || null,
-    status: ORDER_STATUS.PENDING_PAYMENT,
+    status: createdOrder.status,
+    paymentMethod: createdOrder.payment_method || paymentMethod,
+    paymentStatus: createdOrder.payment_status || paymentStatus,
     subtotalCedis: subtotal,
     items: lineItems,
   };
@@ -900,14 +987,31 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
   }
 
   await updateOrderStatus(orderId, nextStatus, cancelReason);
+  const paymentMethod = normalizePaymentMethod(order.payment_method, {
+    source: order.source,
+    deliveryType: order.delivery_type,
+  });
 
   if (nextStatus === ORDER_STATUS.PAID) {
-    await setPaymentConfirmedAt(orderId);
-    await issueLoyaltyForPaidOrder(orderId);
+    if (isCapturedPaymentMethod(paymentMethod)) {
+      await setPaymentStatus(orderId, PAYMENT_STATUS.PAID, { markConfirmedAt: true });
+      await issueLoyaltyForPaidOrder(orderId);
+    } else {
+      await setPaymentStatus(orderId, PAYMENT_STATUS.PENDING);
+    }
+  }
+
+  if (nextStatus === ORDER_STATUS.PAYMENT_FAILED) {
+    await setPaymentStatus(orderId, PAYMENT_STATUS.FAILED);
   }
 
   if (nextStatus === ORDER_STATUS.RETURNED || nextStatus === ORDER_STATUS.REFUNDED) {
     await revokeLoyaltyForOrder(orderId, nextStatus);
+  }
+
+  if (nextStatus === ORDER_STATUS.DELIVERED && paymentMethod === PAYMENT_METHOD.CASH_ON_DELIVERY) {
+    await setPaymentStatus(orderId, PAYMENT_STATUS.PAID, { markConfirmedAt: true });
+    await issueLoyaltyForPaidOrder(orderId);
   }
 
   if (nextStatus === ORDER_STATUS.DELIVERED) {
@@ -1124,7 +1228,13 @@ async function getOrderByOrderNumberForTracking(input) {
     0,
   );
 
-  const etaMinutes = etaMinutesFromSla(order.delivery_type, slaConfig);
+  const paymentMethod = normalizePaymentMethod(order.payment_method, {
+    source: order.source,
+    deliveryType: order.delivery_type,
+  });
+  const includePendingPayment = paymentMethod === PAYMENT_METHOD.MOMO
+    && String(order.payment_status || "").toUpperCase() !== PAYMENT_STATUS.PAID;
+  const etaMinutes = etaMinutesFromSla(order.delivery_type, slaConfig, { includePendingPayment });
 
   return {
     orderNumber: order.order_number,
@@ -1132,7 +1242,8 @@ async function getOrderByOrderNumberForTracking(input) {
     stage: getReadableStage(order.status),
     deliveryType: order.delivery_type,
     source: order.source,
-    paymentMethod: order.payment_method,
+    paymentMethod: paymentMethod,
+    paymentStatus: paymentStatusLabel(order.payment_status),
     subtotalCedis: Number(order.subtotal_cedis || 0),
     customerName: order.full_name,
     customerPhone: order.phone,
