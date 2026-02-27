@@ -2,7 +2,7 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const { asyncHandler } = require("../middleware/asyncHandler");
 const { validate } = require("../middleware/validate");
-const { requireRiderAuth } = require("../middleware/auth");
+const { requireRiderAuth, requireRiderKey } = require("../middleware/auth");
 const env = require("../config/env");
 const {
   orderCreateSchema,
@@ -48,29 +48,33 @@ router.get("/orders/track/:orderNumber", trackingLimiter, asyncHandler(trackOrde
 
 router.post("/ussd/interaction", validate(ussdRequestSchema), asyncHandler(processUssd));
 router.post("/payments/hubtel/callback", asyncHandler(handleHubtelCallback));
-router.post("/rider/auth/login", validate(riderLoginSchema), asyncHandler(riderLogin));
-router.post("/rider/auth/logout", requireRiderAuth, asyncHandler(riderLogout));
+router.post("/rider/auth/login", requireRiderKey, validate(riderLoginSchema), asyncHandler(riderLogin));
+router.post("/rider/auth/logout", requireRiderKey, requireRiderAuth, asyncHandler(riderLogout));
 router.patch(
   "/rider/shift",
+  requireRiderKey,
   requireRiderAuth,
   validate(riderShiftUpdateSchema),
   asyncHandler(updateShiftStatus),
 );
 router.post(
   "/rider/devices/token",
+  requireRiderKey,
   requireRiderAuth,
   validate(riderDeviceTokenSchema),
   asyncHandler(registerDeviceToken),
 );
 router.post(
   "/delivery/verify",
+  requireRiderKey,
   requireRiderAuth,
   validate(deliveryVerifySchema),
   asyncHandler(verifyDelivery),
 );
-router.get("/rider/queue", requireRiderAuth, asyncHandler(listRiderQueue));
+router.get("/rider/queue", requireRiderKey, requireRiderAuth, asyncHandler(listRiderQueue));
 router.post(
   "/rider/incidents",
+  requireRiderKey,
   requireRiderAuth,
   validate(riderIncidentCreateSchema),
   asyncHandler(reportRiderIncident),

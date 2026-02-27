@@ -1,5 +1,6 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
@@ -52,7 +53,22 @@ function createApp() {
 
   app.use("/admin", express.static(path.join(process.cwd(), "public/admin"), adminStaticOptions));
   app.use("/customer", express.static(path.join(process.cwd(), "public/customer"), adminStaticOptions));
-  app.use("/receipts", express.static(path.join(process.cwd(), "data/receipts")));
+  app.get("/receipts/:fileName", (req, res) => {
+    const decoded = decodeURIComponent(String(req.params.fileName || ""));
+    // Serve only generated receipt HTML files, never arbitrary artifacts.
+    if (!/^[A-Za-z0-9-]+-[a-f0-9]{16}\.html$/i.test(decoded)) {
+      return res.status(404).json({ error: "Receipt not found" });
+    }
+
+    const receiptRoot = path.resolve(process.cwd(), "data/receipts");
+    const filePath = path.resolve(path.join(receiptRoot, decoded));
+    const withinRoot = filePath === receiptRoot || filePath.startsWith(`${receiptRoot}${path.sep}`);
+    if (!withinRoot || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Receipt not found" });
+    }
+
+    return res.sendFile(filePath);
+  });
 
   const publicApiLimiter = rateLimit({
     windowMs: env.rateLimitWindowMs,

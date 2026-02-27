@@ -16,7 +16,7 @@ async function handleHubtelCallback(req, res) {
     req.get("x-callback-signature");
   const isValid = verifyHubtelSignature(req.rawBody || "", signature, env.callbackSecret);
 
-  if (!isValid && !env.hubtelCallbackSignatureOptional) {
+  if (!isValid) {
     await logSensitiveAction({
       actorType: "system",
       actorId: null,
@@ -29,19 +29,6 @@ async function handleHubtelCallback(req, res) {
       },
     });
     return res.status(401).json({ error: "Invalid callback signature" });
-  }
-
-  if (!isValid && env.hubtelCallbackSignatureOptional) {
-    await logSensitiveAction({
-      actorType: "system",
-      actorId: null,
-      action: "HUBTEL_CALLBACK_SIGNATURE_BYPASSED",
-      entityType: "payment_callback",
-      entityId: null,
-      details: {
-        mode: "test_shortcode",
-      },
-    });
   }
 
   const result = await processHubtelCallback(req.body);

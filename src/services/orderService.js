@@ -1115,8 +1115,6 @@ async function getRiderQueue(limit = 80, options = {}) {
   const riderMode = String(options.riderMode || "staff").trim().toLowerCase();
   const includeSensitivePhone = options.includeSensitivePhone !== false && riderMode !== "guest";
 
-  await assignDeliveryOrdersByWorkload();
-
   const [rows, commissionRatePercent] = await Promise.all([
     listOutForDeliveryOrders(limit),
     getGuestCommissionRatePercent(),

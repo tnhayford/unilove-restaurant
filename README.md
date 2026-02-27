@@ -174,7 +174,7 @@ SMS:
 
 Other:
 
-- `RIDER_APP_KEY` (required for rider API access)
+- `RIDER_APP_KEY` (optional but strongly recommended; when set, rider endpoints require `x-rider-key`)
 - `ENABLE_STATUS_CHECK_JOB`
 - `STATUS_CHECK_INTERVAL_MS`
 - `ENABLE_REPORT_SCHEDULE_JOB`

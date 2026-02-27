@@ -24,8 +24,6 @@ module.exports = {
     `http://localhost:${Number(process.env.PORT || 4000)}`,
   jwtSecret: process.env.JWT_SECRET,
   callbackSecret: process.env.HUBTEL_CALLBACK_SECRET,
-  hubtelCallbackSignatureOptional:
-    process.env.HUBTEL_CALLBACK_SIGNATURE_OPTIONAL === "true",
   hubtelSmsBaseUrl:
     process.env.HUBTEL_SMS_BASE_URL || "https://sms.hubtel.com/v1/messages/send",
   hubtelSmsClientId: process.env.HUBTEL_SMS_CLIENT_ID || "",
@@ -55,6 +53,9 @@ module.exports = {
   riderDefaultId: (process.env.RIDER_DEFAULT_ID || "").trim(),
   riderDefaultName: (process.env.RIDER_DEFAULT_NAME || "Default Rider").trim(),
   riderDefaultPin: (process.env.RIDER_DEFAULT_PIN || "").trim(),
+  riderGuestLoginPolicy: (process.env.RIDER_GUEST_LOGIN_POLICY || "invite_only").trim(),
+  riderGuestAccessCode: (process.env.RIDER_GUEST_ACCESS_CODE || "").trim(),
+  riderGuestJwtTtlHours: Number(process.env.RIDER_GUEST_JWT_TTL_HOURS || 4),
   fcmProjectId: (process.env.FCM_PROJECT_ID || "").trim(),
   fcmClientEmail: (process.env.FCM_CLIENT_EMAIL || "").trim(),
   fcmPrivateKey: (process.env.FCM_PRIVATE_KEY || "").replace(/\\n/g, "\n").trim(),

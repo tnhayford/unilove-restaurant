@@ -8,7 +8,7 @@ const STATUS_STEPS = [
 ];
 
 const FAILURE_STATUSES = new Set(["PAYMENT_FAILED", "CANCELED", "REFUNDED", "RETURNED"]);
-const TRACK_REFRESH_MS = 6000;
+const TRACK_REFRESH_MS = 15000;
 
 let activeOrderNumber = "";
 let activeTrackingToken = "";

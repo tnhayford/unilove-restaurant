@@ -11,6 +11,14 @@ const {
   deleteScheduledReport,
 } = require("../services/reportService");
 
+const REPORT_ROOT = path.resolve(process.cwd(), "data/reports");
+
+function isPathWithinRoot(candidatePath, rootPath) {
+  const normalizedCandidate = path.resolve(candidatePath);
+  const normalizedRoot = path.resolve(rootPath);
+  return normalizedCandidate === normalizedRoot || normalizedCandidate.startsWith(`${normalizedRoot}${path.sep}`);
+}
+
 const listQuerySchema = z.object({
   status: z.enum(["queued", "running", "completed", "failed"]).optional(),
   limit: z.string().regex(/^\d+$/).optional(),
@@ -129,6 +137,9 @@ async function downloadReport(req, res) {
   }
 
   const filePath = path.resolve(job.file_path);
+  if (!isPathWithinRoot(filePath, REPORT_ROOT)) {
+    return res.status(403).json({ error: "Report file access denied" });
+  }
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "Report file not found" });
   }

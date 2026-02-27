@@ -184,11 +184,11 @@ async function processReportJob(jobId) {
     const filePath = path.join(REPORT_DIR, fileName);
 
     if (job.report_format === "json") {
-      fs.writeFileSync(filePath, JSON.stringify(rows, null, 2), "utf8");
+      await fs.promises.writeFile(filePath, JSON.stringify(rows, null, 2), "utf8");
     } else if (job.report_format === "excel") {
-      fs.writeFileSync(filePath, toCsv(rows), "utf8");
+      await fs.promises.writeFile(filePath, toCsv(rows), "utf8");
     } else {
-      fs.writeFileSync(filePath, toPdfBuffer(`${job.report_type.toUpperCase()} REPORT`, rows));
+      await fs.promises.writeFile(filePath, toPdfBuffer(`${job.report_type.toUpperCase()} REPORT`, rows));
     }
 
     await markReportJobCompleted(jobId, {
@@ -223,11 +223,11 @@ async function queueReport({ type, format, filters, requestedBy }) {
     requestedBy,
   });
 
-  setTimeout(() => {
+  Promise.resolve().then(() => {
     processReportJob(id).catch(() => {
       // already handled internally
     });
-  }, 10);
+  });
 
   return getReportJobById(id);
 }

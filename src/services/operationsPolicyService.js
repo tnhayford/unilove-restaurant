@@ -20,7 +20,7 @@ const DEFAULT_POLICY = Object.freeze({
   smsOrderTrackingEnabled: true,
   smsOrderCompletionEnabled: true,
   smsDeliveryOtpEnabled: false,
-  riderGuestLoginPolicy: RIDER_GUEST_POLICIES.OPEN,
+  riderGuestLoginPolicy: RIDER_GUEST_POLICIES.INVITE_ONLY,
   riderGuestAccessCode: "",
   riderGuestCommissionPercent: 8,
 });

@@ -19,7 +19,9 @@ async function bootstrapTestApp() {
   process.env.DATABASE_PATH = dbPath;
   process.env.JWT_SECRET = "test-jwt-secret-123";
   process.env.HUBTEL_CALLBACK_SECRET = "test-callback-secret-123";
-  process.env.HUBTEL_CALLBACK_SIGNATURE_OPTIONAL = "false";
+  process.env.HUBTEL_CALLBACK_SIGNATURE_OPTIONAL = "true";
+  process.env.RIDER_GUEST_LOGIN_POLICY = "invite_only";
+  process.env.RIDER_GUEST_ACCESS_CODE = "guest-access-2026";
   process.env.COOKIE_SECURE = "false";
 
   [
@@ -221,13 +223,26 @@ describe("Security hardening integration", () => {
     expect(mismatchedTokenRes.status).toBe(404);
   });
 
-  it("allows guest rider login without PIN", async () => {
+  it("rejects guest rider login without required invite code", async () => {
     if (!canRunHttpTests) return;
 
     const response = await request.post("/api/rider/auth/login").send({
       mode: "guest",
       riderName: "Guest Ama",
       riderId: "ama",
+    });
+    expect(response.status).toBe(403);
+    expect(response.body?.error).toMatch(/access code/i);
+  });
+
+  it("allows guest rider login with valid invite code", async () => {
+    if (!canRunHttpTests) return;
+
+    const response = await request.post("/api/rider/auth/login").send({
+      mode: "guest",
+      riderName: "Guest Ama",
+      riderId: "ama",
+      guestAccessCode: "guest-access-2026",
     });
     expect(response.status).toBe(200);
     expect(response.body?.data?.token).toBeTruthy();
