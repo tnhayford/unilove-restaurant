@@ -2,3 +2,4 @@
 set -euo pipefail
 
 scripts/mission_guard.sh --last-commit
+scripts/git_autopush.sh
