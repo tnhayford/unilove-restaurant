@@ -99,8 +99,8 @@
             <div>
               <label>Delivery OTP SMS</label>
               <select id="smsDeliveryOtpEnabled" class="select">
-                <option value="false">Disabled</option>
                 <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
               </select>
             </div>
             <div>
@@ -124,7 +124,7 @@
             <button id="saveOpsPolicyBtn" class="btn primary">Save Operations Policy</button>
           </div>
           <div class="helper" style="margin-top:10px;">
-            Recommended: keep only tracking + completion SMS enabled, and keep OTP SMS off unless strictly needed.
+            Recommended: keep tracking, completion, and delivery OTP SMS enabled for normal operations.
           </div>
         </section>
 
@@ -134,6 +134,7 @@
             <div>
               <label>Sound Type</label>
               <select id="alertTone" class="select">
+                <option value="ops_default">Default Ops Bell</option>
                 <option value="rapid_chime">Rapid Chime</option>
                 <option value="driver_ping">Driver Ping</option>
                 <option value="digital_bell">Digital Bell</option>

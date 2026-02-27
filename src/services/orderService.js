@@ -43,7 +43,7 @@ const { notifyRiderDispatchUpdate } = require("./riderPushService");
 const { getSlaConfig } = require("./slaService");
 const { shouldSendCustomerSms } = require("./operationsPolicyService");
 const { assignDeliveryOrdersByWorkload } = require("./riderAssignmentService");
-const { listRiderRoster } = require("./riderPresenceService");
+const { listRiderRoster, listActiveAssignableRiders } = require("./riderPresenceService");
 const { publishOrderEvent } = require("./realtimeEventService");
 
 const ORDER_ACTION = {
@@ -443,18 +443,12 @@ function isDeliveryTypeTransitionAllowed(order, nextStatus) {
   if (order.delivery_type === "pickup" && nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
     return false;
   }
-  if (order.delivery_type === "delivery" && nextStatus === ORDER_STATUS.READY_FOR_PICKUP) {
-    return false;
-  }
   return true;
 }
 
 function shouldNotifyRiderDispatch(order, nextStatus) {
   if (!order || order.delivery_type !== "delivery") return false;
-  return (
-    nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY ||
-    nextStatus === ORDER_STATUS.READY_FOR_PICKUP
-  );
+  return nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY;
 }
 
 async function emitRiderDispatchAlert(order, nextStatus) {
@@ -502,6 +496,52 @@ async function emitRiderDispatchAlert(order, nextStatus) {
         riderId: assignedRiderId,
         message: error?.message || "Unknown push failure",
       },
+    });
+  }
+}
+
+async function ensureDispatchHasAssignableRider(order) {
+  if (!order || order.delivery_type !== "delivery") return;
+  const activeRiders = await listActiveAssignableRiders();
+  if (activeRiders.length) return;
+  throw Object.assign(
+    new Error("No rider is currently online. Ask a rider to go online before dispatch."),
+    { statusCode: 409 },
+  );
+}
+
+async function ensureDeliveryOtpPrepared(orderId, orderSnapshot) {
+  if (!orderSnapshot || orderSnapshot.delivery_type !== "delivery") return;
+
+  const { generateDeliveryCode } = require("./deliveryService");
+  const code = await generateDeliveryCode(orderId);
+  const allowOtpSms = await shouldSendCustomerSms("delivery_otp");
+  if (!allowOtpSms) {
+    await logSensitiveAction({
+      actorType: "system",
+      actorId: null,
+      action: "DELIVERY_CODE_SMS_SKIPPED_POLICY",
+      entityType: "order",
+      entityId: orderId,
+      details: { policy: "sms_delivery_otp_enabled=false" },
+    });
+    return;
+  }
+
+  try {
+    await sendSms({
+      orderId,
+      toPhone: orderSnapshot.phone,
+      message: `Unilove: Delivery code for order ${orderSnapshot.order_number} is ${code}. Share only at handover.`,
+    });
+  } catch (error) {
+    await logSensitiveAction({
+      actorType: "system",
+      actorId: null,
+      action: "DELIVERY_CODE_SMS_FAILED",
+      entityType: "order",
+      entityId: orderId,
+      details: { message: error?.message || "Unknown SMS failure" },
     });
   }
 }
@@ -855,6 +895,10 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
     );
   }
 
+  if (nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+    await ensureDispatchHasAssignableRider(order);
+  }
+
   await updateOrderStatus(orderId, nextStatus, cancelReason);
 
   if (nextStatus === ORDER_STATUS.PAID) {
@@ -903,6 +947,11 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
         details: { policy: "sms_order_completion_enabled=false" },
       });
     }
+  }
+
+  if (nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+    const dispatchSnapshot = await getOrderById(orderId);
+    await ensureDeliveryOtpPrepared(orderId, dispatchSnapshot);
   }
 
   await logSensitiveAction({
@@ -974,15 +1023,15 @@ function getAvailableActions(order) {
   }
 
   if (order.status === ORDER_STATUS.PREPARING) {
-    if (order.delivery_type === "pickup") {
-      actions.push(ORDER_ACTION.MARK_READY_PICKUP);
-    } else if (order.delivery_type === "delivery") {
-      actions.push(ORDER_ACTION.DISPATCH_ORDER);
-    }
+    actions.push(ORDER_ACTION.MARK_READY_PICKUP);
   }
 
   if (order.status === ORDER_STATUS.READY_FOR_PICKUP) {
-    actions.push(ORDER_ACTION.COMPLETE_PICKUP);
+    if (order.delivery_type === "pickup") {
+      actions.push(ORDER_ACTION.COMPLETE_PICKUP);
+    } else if (order.delivery_type === "delivery") {
+      actions.push(ORDER_ACTION.DISPATCH_ORDER);
+    }
   }
 
   if (order.status === ORDER_STATUS.OUT_FOR_DELIVERY) {

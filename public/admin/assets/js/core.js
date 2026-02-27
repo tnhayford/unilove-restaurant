@@ -5,7 +5,7 @@ const AdminCore = (() => {
   const DEFAULT_SETTINGS = {
     alertEnabled: true,
     alertVolume: 0.75,
-    alertTone: "rapid_chime",
+    alertTone: "ops_default",
     alertIntervalMs: 1400,
     autoRefreshMs: 6000,
   };

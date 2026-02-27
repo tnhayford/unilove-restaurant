@@ -605,7 +605,7 @@ async function runMigrations() {
   );
   await db.run(
     `INSERT OR IGNORE INTO system_settings (setting_key, setting_value)
-     VALUES ('sms_delivery_otp_enabled', 'false')`,
+     VALUES ('sms_delivery_otp_enabled', 'true')`,
   );
   await db.run(
     `INSERT OR IGNORE INTO system_settings (setting_key, setting_value)

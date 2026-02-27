@@ -23,9 +23,24 @@ async function listRiderQueue(req, res) {
 
   if (riderId) {
     const snapshot = await getRiderPresenceSnapshot(riderId);
+    const shiftStatus = String(snapshot?.shift_status || "online").trim().toLowerCase();
     const lastSeenAt = parseDbTimestamp(snapshot?.last_seen_at);
     const recentlySeen =
       lastSeenAt && Date.now() - lastSeenAt.getTime() < PRESENCE_WRITE_COOLDOWN_MS;
+
+    if (shiftStatus === "offline") {
+      if (!recentlySeen) {
+        await markRiderPresence({
+          riderId,
+          mode: riderMode,
+          displayName: riderName || riderId,
+          shiftStatus: "offline",
+          markSeen: true,
+          markLogin: false,
+        });
+      }
+      return res.json({ data: [] });
+    }
 
     if (!recentlySeen) {
       await markRiderPresence({

@@ -1,6 +1,7 @@
 const fs = require("fs");
 const net = require("net");
 const path = require("path");
+const crypto = require("crypto");
 const supertest = require("supertest");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -135,6 +136,49 @@ describe("Security hardening integration", () => {
       });
     expect(response.status).toBe(401);
     expect(response.body.error).toMatch(/Invalid callback signature/i);
+  });
+
+  it("accepts signed form callbacks and marks order as paid", async () => {
+    if (!canRunHttpTests) return;
+
+    const itemId = await seedMenuItem();
+    const createRes = await request.post("/api/orders").send({
+      phone: "0240001888",
+      fullName: "Form Callback Customer",
+      deliveryType: "delivery",
+      address: "Ridge, Accra",
+      items: [{ itemId, quantity: 1 }],
+    });
+    expect(createRes.status).toBe(201);
+
+    const orderId = createRes.body?.data?.id;
+    const clientReference = createRes.body?.data?.clientReference;
+    expect(orderId).toBeTruthy();
+    expect(clientReference).toBeTruthy();
+
+    const encoded = `clientReference=${encodeURIComponent(clientReference)}&ResponseCode=0000&Status=paid&TransactionId=txn-form-001`;
+    const signature = crypto
+      .createHmac("sha256", process.env.HUBTEL_CALLBACK_SECRET)
+      .update(encoded)
+      .digest("hex");
+
+    const callbackRes = await request
+      .post("/api/payments/hubtel/callback")
+      .set("Content-Type", "application/x-www-form-urlencoded")
+      .set("x-hubtel-signature", signature)
+      .send(encoded);
+
+    expect(callbackRes.status).toBe(202);
+
+    const db = await getDbHandle();
+    const row = await db.get(
+      `SELECT status, payment_confirmed_at
+       FROM orders
+       WHERE id = ?`,
+      [orderId],
+    );
+    expect(row?.status).toBe("PAID");
+    expect(row?.payment_confirmed_at).toBeTruthy();
   });
 
   it("requires secure tracking token for public order tracking", async () => {

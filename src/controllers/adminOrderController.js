@@ -11,12 +11,9 @@ const {
   assignOrderToRider,
 } = require("../services/orderService");
 const {
-  generateDeliveryCode,
   resetDeliveryAttemptsForAdmin,
   regenerateDeliveryCodeForAdmin,
 } = require("../services/deliveryService");
-const { sendSms } = require("../services/smsService");
-const { shouldSendCustomerSms } = require("../services/operationsPolicyService");
 const { z } = require("zod");
 const { ORDER_STATUS } = require("../utils/orderStatus");
 const { getOrderPolicyPayload } = require("../services/orderPolicyService");
@@ -136,18 +133,6 @@ async function updateOrderStatus(req, res) {
     details: { source: "admin_dashboard", cancelReason: cancelReason || null },
     cancelReason,
   });
-
-  if (status === "OUT_FOR_DELIVERY" && updatedOrder.delivery_type === "delivery") {
-    const allowOtpSms = await shouldSendCustomerSms("delivery_otp");
-    if (allowOtpSms) {
-      const code = await generateDeliveryCode(orderId);
-      await sendSms({
-        orderId,
-        toPhone: updatedOrder.phone,
-        message: `Unilove: Delivery code for order ${updatedOrder.order_number} is ${code}. Share only at handover.`,
-      });
-    }
-  }
 
   return res.json({ data: updatedOrder });
 }

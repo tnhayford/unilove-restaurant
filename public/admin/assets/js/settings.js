@@ -2,8 +2,11 @@ let previewCtx;
 let currentAdmin = null;
 
 function setForm(settings) {
+  const toneSelect = document.getElementById("alertTone");
   const normalizedTone = settings.alertTone === "rider_arrival" ? "dispatch_pop" : settings.alertTone;
-  document.getElementById("alertTone").value = normalizedTone;
+  const nextTone = String(normalizedTone || "ops_default").trim().toLowerCase();
+  const hasToneOption = Array.from(toneSelect.options || []).some((option) => option.value === nextTone);
+  toneSelect.value = hasToneOption ? nextTone : "ops_default";
   document.getElementById("alertVolume").value = String(settings.alertVolume);
   document.getElementById("alertEnabled").value = String(settings.alertEnabled);
   document.getElementById("alertIntervalMs").value = String(settings.alertIntervalMs);

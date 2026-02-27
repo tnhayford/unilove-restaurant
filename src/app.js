@@ -25,7 +25,16 @@ function createApp() {
     }),
   );
 
-  app.use(express.urlencoded({ extended: false }));
+  app.use(
+    express.urlencoded({
+      extended: false,
+      verify: (req, res, buf) => {
+        if (!req.rawBody) {
+          req.rawBody = buf.toString("utf8");
+        }
+      },
+    }),
+  );
 
   // Admin-friendly entrypoint for bare domain access.
   app.get("/", (req, res) => {

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kitchen Portal</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body class="kitchen-page">
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Kitchen execution</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Kitchen Portal</h1>
+              <div class="meta">Accept paid orders, prepare, and mark ready.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <span id="kitchenLastSync" class="meta">Sync: --</span>
+            <button id="kitchenRefreshBtn" class="btn">Refresh</button>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel kitchen-toolbar">
+          <div id="kitchenStatus" class="helper">Loading kitchen queue...</div>
+        </section>
+
+        <section class="board kitchen-board">
+          <section class="lane kitchen-lane-paid">
+            <div class="lane-header">
+              <span class="lane-title">Incoming Paid Orders</span>
+              <span id="kitchenPaidCount" class="badge-count">0</span>
+            </div>
+            <div id="kitchenPaidLane" class="lane-content"></div>
+          </section>
+
+          <section class="lane kitchen-lane-preparing">
+            <div class="lane-header">
+              <span class="lane-title">Preparing</span>
+              <span id="kitchenPreparingCount" class="badge-count">0</span>
+            </div>
+            <div id="kitchenPreparingLane" class="lane-content"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/kitchen.js"></script>
+  </body>
+</html>

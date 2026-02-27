@@ -4,7 +4,7 @@ const OPS_STREAM_RECONNECT_MS = 8000;
 const RIDER_REFRESH_MS = 30000;
 const REALTIME_MIN_REFRESH_GAP_MS = 1500;
 const DELAY_THRESHOLD_MINUTES = 30;
-const OPS_ALERT_SOUND_URL = "/admin/assets/sounds/ops-incoming-alert.m4a";
+const OPS_ALERT_DEFAULT_SOUND_URL = "/admin/assets/sounds/ops-incoming-alert.m4a";
 const MAX_VISIBLE_ORDER_CARDS_PER_LANE = 8;
 const MAX_VISIBLE_RIDER_CARDS_PER_LANE = 10;
 const MAX_VISIBLE_RIDER_DELIVERY_PER_LANE = 8;
@@ -91,6 +91,7 @@ const state = {
   expandedOrderIds: new Set(),
   alertIntervalId: null,
   alertAudio: null,
+  alertAudioTone: null,
   riderFeedUnavailable: false,
   orderPolicy: {
     cancelReasons: [],
@@ -113,8 +114,11 @@ function alertSettings() {
   const settings = (window.AdminCore && typeof window.AdminCore.getSettings === "function")
     ? window.AdminCore.getSettings()
     : {};
+  const tone = String(settings.alertTone || "ops_default").trim().toLowerCase();
+  const normalizedTone = tone === "rider_arrival" ? "dispatch_pop" : tone;
   return {
     enabled: settings.alertEnabled !== false,
+    tone: normalizedTone || "ops_default",
     intervalMs: Math.max(700, Number(settings.alertIntervalMs || 1400)),
     volume: Math.max(0, Math.min(1, Number(settings.alertVolume ?? 0.75))),
   };
@@ -136,17 +140,33 @@ function stopIncomingOrderAlertLoop() {
   }
 }
 
-function ensureIncomingOrderAlertAudio() {
-  if (state.alertAudio) return state.alertAudio;
-  const audio = new Audio(OPS_ALERT_SOUND_URL);
+function resolveAlertToneUrl(_tone) {
+  return OPS_ALERT_DEFAULT_SOUND_URL;
+}
+
+function ensureIncomingOrderAlertAudio(tone) {
+  const targetTone = String(tone || "ops_default").trim().toLowerCase() || "ops_default";
+  if (state.alertAudio && state.alertAudioTone === targetTone) return state.alertAudio;
+  if (state.alertAudio) {
+    try {
+      state.alertAudio.pause();
+      state.alertAudio.currentTime = 0;
+    } catch (_error) {
+      // no-op
+    }
+  }
+  const audio = new Audio(resolveAlertToneUrl(targetTone));
   audio.preload = "auto";
   state.alertAudio = audio;
+  state.alertAudioTone = targetTone;
   return audio;
 }
 
 function isAlertCandidateOrder(order) {
   if (!order) return false;
-  if (FINAL_STATUSES.has(order.status)) return false;
+  if (normalizeStatus(order.status) !== "PAID") return false;
+  const source = String(order.source || "").trim().toLowerCase();
+  if (!["online", "ussd"].includes(source)) return false;
   return !String(order.opsMonitoredAt || "").trim();
 }
 
@@ -154,9 +174,9 @@ function currentAlertCandidateCount() {
   return state.orders.filter((order) => isAlertCandidateOrder(order)).length;
 }
 
-function playIncomingOrderAlertOnce(volume) {
+function playIncomingOrderAlertOnce(volume, tone) {
   if (document.hidden) return;
-  const audio = ensureIncomingOrderAlertAudio();
+  const audio = ensureIncomingOrderAlertAudio(tone);
   try {
     audio.pause();
     audio.currentTime = 0;
@@ -181,13 +201,13 @@ function syncIncomingOrderAlertLoop() {
   const pendingCount = currentAlertCandidateCount();
   if (!pendingCount) return;
 
-  playIncomingOrderAlertOnce(settings.volume);
+  playIncomingOrderAlertOnce(settings.volume, settings.tone);
   state.alertIntervalId = setInterval(() => {
     if (!currentAlertCandidateCount()) {
       stopIncomingOrderAlertLoop();
       return;
     }
-    playIncomingOrderAlertOnce(settings.volume);
+    playIncomingOrderAlertOnce(settings.volume, settings.tone);
   }, settings.intervalMs);
 }
 
@@ -286,6 +306,7 @@ function normalizeOrder(raw) {
     orderNumber: String(raw.order_number || raw.orderNumber || "-").trim(),
     customerName: String(raw.full_name || raw.fullName || "Guest").trim(),
     phone: String(raw.phone || "").trim(),
+    source: String(raw.source || "online").trim().toLowerCase() || "online",
     deliveryType,
     address: String(raw.address || "").trim(),
     status,
@@ -462,6 +483,7 @@ function renderOrderCard(order) {
 
       <div class="order-collapse">
         <div class="order-meta">Assigned rider: ${escapeHtml(assignedLabel)}</div>
+        <div class="order-meta">Source: ${escapeHtml(order.source || "online")}</div>
         <div class="order-actions-row" style="margin-top: 8px;">
           <button
             type="button"
@@ -471,16 +493,6 @@ function renderOrderCard(order) {
           >
             Manage Order
           </button>
-          ${isDeliveryOrder ? `
-            <button
-              type="button"
-              class="btn btn-sm"
-              data-role="assign-rider"
-              data-order-id="${escapeHtml(order.id)}"
-            >
-              Assign Rider
-            </button>
-          ` : ""}
         </div>
       </div>
     </article>
@@ -856,71 +868,6 @@ async function runDeliveryAction(order, deliveryAction, button) {
   }
 }
 
-function buildAssignableRiderPrompt(order) {
-  const onlineRiders = state.riders
-    .filter((row) => String(row.status || "").toLowerCase() !== "offline")
-    .map((row) => `${row.id} (${row.name}, ${row.status})`);
-
-  const lines = [
-    `Assign rider for ${order.orderNumber}.`,
-    `Current: ${getAssignedRiderLabel(order)}`,
-    "",
-    "Online riders:",
-    ...(onlineRiders.length ? onlineRiders : ["- none"]),
-    "",
-    "Enter Rider ID to assign, or leave blank to unassign.",
-  ];
-  return lines.join("\n");
-}
-
-async function runAssignRiderAction(order, button) {
-  if (!order || order.deliveryType !== "delivery") return;
-
-  const suggested = String(order.assignedRiderId || "").trim();
-  const input = window.prompt(buildAssignableRiderPrompt(order), suggested);
-  if (input === null) return;
-
-  const nextRiderId = String(input || "").trim();
-  if (nextRiderId) {
-    const target = getRiderById(nextRiderId);
-    if (!target) {
-      setBoardStatus("Unknown rider ID.", "error");
-      return;
-    }
-    if (String(target.status || "").toLowerCase() === "offline") {
-      setBoardStatus("Selected rider is offline.", "error");
-      return;
-    }
-  }
-
-  const originalText = button?.textContent || "";
-  if (button) {
-    button.disabled = true;
-    button.textContent = "Assigning...";
-  }
-
-  try {
-    await apiMutate(`/api/admin/orders/${encodeURIComponent(order.id)}/assign-rider`, {
-      method: "PATCH",
-      body: {
-        riderId: nextRiderId || null,
-      },
-    });
-    setBoardStatus(
-      `${order.orderNumber} ${nextRiderId ? `assigned to ${nextRiderId}` : "unassigned"} successfully.`,
-      "success",
-    );
-    await refreshBoard({ silent: true });
-  } catch (error) {
-    setBoardStatus(error.message || "Unable to assign rider.", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = originalText;
-    }
-  }
-}
-
 function attachOrderHandlers(root) {
   root.querySelectorAll("button[data-role='toggle-order']").forEach((button) => {
     button.addEventListener("click", () => {
@@ -963,14 +910,6 @@ function attachOrderHandlers(root) {
     });
   });
 
-  root.querySelectorAll("button[data-role='assign-rider']").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const orderId = button.dataset.orderId || "";
-      const order = getOrderById(orderId);
-      if (!order) return;
-      await runAssignRiderAction(order, button);
-    });
-  });
 }
 
 function updateTabButtons(view) {

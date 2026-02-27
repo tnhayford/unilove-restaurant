@@ -12,6 +12,7 @@ let ORDER_POLICY = {
   cancelReasons: [],
   refundPolicy: [],
 };
+let RIDER_ROSTER = [];
 
 function getOrderId() {
   const params = new URLSearchParams(window.location.search);
@@ -66,6 +67,7 @@ function renderSummary(order) {
     ["Delivery Type", order.delivery_type],
     ["Source", order.source || "online"],
     ["Address", order.address || "N/A"],
+    ["Assigned Rider", order.assigned_rider_id || "Unassigned"],
     ["Cancel Reason", order.cancel_reason || "N/A"],
     ["Subtotal", `GHS ${AdminCore.money(order.subtotal_cedis)}`],
     ["Age", `${order.ageMinutes || 0} minutes`],
@@ -91,6 +93,89 @@ function renderSummary(order) {
     policyHint.textContent = isPaidCanceled
       ? "This canceled order is paid. Refund can be issued from this page."
       : "";
+  }
+}
+
+function buildRiderOptionsHtml(currentAssignedId = "") {
+  const e = AdminCore.escapeHtml;
+  const normalizedAssigned = String(currentAssignedId || "").trim();
+  const options = ['<option value="">Select available rider</option>'];
+  RIDER_ROSTER
+    .filter((row) => String(row.status || "").toLowerCase() !== "offline")
+    .forEach((row) => {
+      const riderId = String(row.id || "").trim();
+      if (!riderId) return;
+      const selected = riderId === normalizedAssigned ? "selected" : "";
+      const label = `${row.fullName || riderId} (${riderId}) - ${row.status || "available"}`;
+      options.push(`<option value="${e(riderId)}" ${selected}>${e(label)}</option>`);
+    });
+  return options.join("");
+}
+
+function renderRiderAssignment(order, refreshFn) {
+  const e = AdminCore.escapeHtml;
+  const container = document.getElementById("riderAssign");
+  if (!container) return;
+
+  if (order.delivery_type !== "delivery") {
+    container.innerHTML = "";
+    return;
+  }
+
+  const currentAssigned = String(order.assigned_rider_id || "").trim();
+  container.innerHTML = `
+    <div class="action-label">Manual Rider Assignment</div>
+    <div class="action-row">
+      <div class="action-controls">
+        <select id="manualRiderId" class="select">
+          ${buildRiderOptionsHtml(currentAssigned)}
+        </select>
+        <button class="btn btn-sm" data-role="manual-assign">Assign Rider</button>
+        <button class="btn btn-sm danger" data-role="manual-unassign">Unassign</button>
+      </div>
+    </div>
+    <div class="helper">Dispatch auto-assigns online riders. Use manual assignment only for override.</div>
+  `;
+
+  container.querySelector('[data-role="manual-assign"]')?.addEventListener("click", async () => {
+    try {
+      const riderId = String(document.getElementById("manualRiderId")?.value || "").trim();
+      if (!riderId) {
+        AdminLayout.setStatus("Select a rider to assign.", "error");
+        return;
+      }
+      await AdminCore.api(`/api/admin/orders/${order.id}/assign-rider`, {
+        method: "PATCH",
+        body: JSON.stringify({ riderId }),
+      });
+      AdminLayout.setStatus(`Order assigned to ${riderId}.`, "success");
+      await refreshFn();
+    } catch (error) {
+      AdminLayout.setStatus(error.message, "error");
+    }
+  });
+
+  container.querySelector('[data-role="manual-unassign"]')?.addEventListener("click", async () => {
+    try {
+      await AdminCore.api(`/api/admin/orders/${order.id}/assign-rider`, {
+        method: "PATCH",
+        body: JSON.stringify({ riderId: null }),
+      });
+      AdminLayout.setStatus("Order rider assignment removed.", "success");
+      await refreshFn();
+    } catch (error) {
+      AdminLayout.setStatus(error.message, "error");
+    }
+  });
+}
+
+async function loadRiders() {
+  try {
+    const payload = await AdminCore.api("/api/admin/riders");
+    const rows = Array.isArray(payload?.data) ? payload.data : [];
+    RIDER_ROSTER = rows;
+  } catch (_) {
+    RIDER_ROSTER = [];
   }
 }
 
@@ -273,9 +358,11 @@ async function markAsMonitored(orderId) {
   async function loadOrder() {
     const payload = await AdminCore.api(`/api/admin/orders/${orderId}`);
     const order = payload.data;
+    await loadRiders();
     renderSummary(order);
     renderItems(order.items || []);
     renderActions(order, loadOrder);
+    renderRiderAssignment(order, loadOrder);
   }
 
   async function loadPolicy() {

@@ -9,6 +9,7 @@ const AdminLayout = (() => {
       label: "Operations",
       links: [
         { href: "/admin/operations.html", label: "Operations Board" },
+        { href: "/admin/kitchen.html", label: "Kitchen Portal" },
         { href: "/admin/order-history.html", label: "Order History" },
         { href: "/admin/instore.html", label: "In-Store Orders" },
         { href: "/admin/menu.html", label: "Menu Management" },
@@ -38,6 +39,7 @@ const AdminLayout = (() => {
   const NAV_LINKS = NAV_GROUPS.flatMap((group) => group.links);
   const PATH_PERMISSION = {
     "/admin/operations.html": "orders.view",
+    "/admin/kitchen.html": "orders.view",
     "/admin/order-history.html": "orders.view",
     "/admin/order-detail.html": "orders.view",
     "/admin/instore.html": "instore.create",
