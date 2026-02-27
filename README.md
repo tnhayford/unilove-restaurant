@@ -18,12 +18,14 @@ Future prompts should extend and optimize this baseline. They should not re-arch
 - Order tracking by short order number
 - Hubtel callback ingestion with signature verification
 - Status-check reconciliation endpoint and optional background reconciliation job
+- Durable job orchestration for scheduled background tasks (DB-backed queue + lease lock)
 - Delivery verification with hashed 6-digit codes and attempt limit
 - Loyalty issuance and revocation rules
 - Receipt HTML generation and static hosting under `/receipts`
 - Admin multi-page UI (login, operations, history, detail, menu, analytics, settings, in-store)
 - Incoming-order sound alert loop until monitoring action is taken
 - Rider queue API plus mobile-first rider web UI scaffold
+- Server-Sent Events (SSE) streams for admin ops and customer tracking updates
 
 ## UI Surfaces
 
@@ -84,6 +86,7 @@ Public API:
 - `GET /api/menu`
 - `POST /api/orders`
 - `GET /api/orders/track/:orderNumber`
+- `GET /api/orders/track/:orderNumber/stream`
 - `POST /api/ussd/interaction`
 - `POST /api/payments/hubtel/callback`
 - `POST /api/delivery/verify`
@@ -96,6 +99,7 @@ Admin API:
 - `GET /api/admin/auth/me`
 - `POST /api/admin/auth/logout`
 - `GET /api/admin/orders`
+- `GET /api/admin/events/ops-stream`
 - `GET /api/admin/orders/history`
 - `GET /api/admin/orders/:orderId`
 - `POST /api/admin/orders/:orderId/monitor`
@@ -143,6 +147,7 @@ Admin API:
 - `npm run setup`
 - `npm run backdate:sample`
 - `npm run simulate:incoming`
+- `npm run db:export:postgres`
 - `npm test`
 
 ## Key Environment Variables
@@ -179,6 +184,13 @@ Other:
 - `STATUS_CHECK_INTERVAL_MS`
 - `ENABLE_REPORT_SCHEDULE_JOB`
 - `REPORT_SCHEDULE_INTERVAL_MS`
+- `ENABLE_DURABLE_JOB_ORCHESTRATOR`
+- `DURABLE_JOB_DISPATCH_INTERVAL_MS`
+- `DURABLE_JOB_EXECUTE_INTERVAL_MS`
+- `DURABLE_JOB_LEASE_TTL_SECONDS`
+- `ENABLE_REALTIME_SSE`
+- `REALTIME_SSE_HEARTBEAT_MS`
+- `REALTIME_SSE_MAX_CLIENTS`
 
 ## Documentation Index
 
@@ -194,3 +206,4 @@ Other:
 - `docs/10_IMPLEMENTATION_ROADMAP.md`
 - `docs/11_SYSTEM_FLOWCHART.md`
 - `docs/12_HETZNER_DEPLOYMENT_GUIDE.md`
+- `docs/17_ARCHITECTURE_BACKLOG_REMEDIATION.md`

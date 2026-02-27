@@ -120,6 +120,7 @@ const {
   patchReportSchedule,
   removeReportSchedule,
 } = require("../controllers/reportController");
+const { streamAdminOpsEvents } = require("../controllers/realtimeController");
 const env = require("../config/env");
 
 const router = express.Router();
@@ -144,6 +145,12 @@ router.get("/auth/me", requireAdminAuth, asyncHandler(me));
 router.post("/auth/logout", requireAdminAuth, requireCsrf, asyncHandler(logout));
 
 router.get("/orders", requireAdminAuth, requirePermission("orders.view"), asyncHandler(listOrders));
+router.get(
+  "/events/ops-stream",
+  requireAdminAuth,
+  requirePermission("orders.view"),
+  asyncHandler(streamAdminOpsEvents),
+);
 router.get("/riders", requireAdminAuth, requirePermission("orders.view"), asyncHandler(listAdminRiders));
 router.get(
   "/riders/accounts",

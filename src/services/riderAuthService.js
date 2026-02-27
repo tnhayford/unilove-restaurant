@@ -12,6 +12,7 @@ const {
   RIDER_GUEST_POLICIES,
   getGuestRiderAuthSettings,
 } = require("./operationsPolicyService");
+const { publishOpsEvent } = require("./realtimeEventService");
 
 const RIDER_MODE = {
   STAFF: "staff",
@@ -120,6 +121,16 @@ async function logRiderAuthAction({
   });
 }
 
+function emitRiderRealtimeEvent(eventName, payload = {}) {
+  publishOpsEvent(eventName, {
+    riderId: String(payload.riderId || "").trim() || null,
+    mode: normalizeRiderMode(payload.mode),
+    shiftStatus: normalizeShiftStatus(payload.shiftStatus, SHIFT_STATUS.OFFLINE),
+    hasDeviceToken: Boolean(payload.hasDeviceToken),
+    updatedAt: payload.updatedAt || new Date().toISOString(),
+  });
+}
+
 async function loginRider({
   mode,
   riderId,
@@ -145,7 +156,7 @@ async function loginRider({
     });
     const token = jwt.sign(buildRiderTokenPayload(guestRider, riderMode), env.jwtSecret, { expiresIn });
 
-    await markRiderPresence({
+    const presence = await markRiderPresence({
       riderId: guestRider.id,
       mode: riderMode,
       displayName: guestRider.full_name,
@@ -172,6 +183,13 @@ async function loginRider({
         shiftStatus: SHIFT_STATUS.ONLINE,
         hasDeviceToken: Boolean(fcmToken),
       },
+    });
+    emitRiderRealtimeEvent("rider.presence", {
+      riderId: guestRider.id,
+      mode: riderMode,
+      shiftStatus: SHIFT_STATUS.ONLINE,
+      hasDeviceToken: Boolean(fcmToken),
+      updatedAt: presence?.updated_at || null,
     });
 
     return {
@@ -202,7 +220,7 @@ async function loginRider({
 
   const token = jwt.sign(buildRiderTokenPayload(rider, riderMode), env.jwtSecret, { expiresIn });
 
-  await markRiderPresence({
+  const presence = await markRiderPresence({
     riderId: rider.id,
     mode: riderMode,
     displayName: rider.full_name,
@@ -230,6 +248,13 @@ async function loginRider({
       hasDeviceToken: Boolean(fcmToken),
     },
   });
+  emitRiderRealtimeEvent("rider.presence", {
+    riderId: rider.id,
+    mode: riderMode,
+    shiftStatus: SHIFT_STATUS.ONLINE,
+    hasDeviceToken: Boolean(fcmToken),
+    updatedAt: presence?.updated_at || null,
+  });
 
   return {
     token,
@@ -256,7 +281,7 @@ async function registerRiderDeviceToken({ riderId, riderMode, fcmToken, deviceId
     platform: platform || "android",
   });
 
-  await markRiderPresence({
+  const presence = await markRiderPresence({
     riderId,
     mode: riderMode,
     displayName: "",
@@ -273,6 +298,13 @@ async function registerRiderDeviceToken({ riderId, riderMode, fcmToken, deviceId
       hasDeviceId: Boolean(deviceId),
       platform: platform || "android",
     },
+  });
+  emitRiderRealtimeEvent("rider.device", {
+    riderId,
+    mode: riderMode,
+    shiftStatus: SHIFT_STATUS.ONLINE,
+    hasDeviceToken: true,
+    updatedAt: presence?.updated_at || null,
   });
 
   return { ok: true };
@@ -328,6 +360,12 @@ async function setRiderShiftStatus({
       note: String(note || "").trim() || null,
     },
   });
+  emitRiderRealtimeEvent("rider.presence", {
+    riderId: normalizedRiderId,
+    mode: normalizedMode,
+    shiftStatus: normalizedShiftStatus,
+    updatedAt: profile?.updated_at || null,
+  });
 
   return {
     riderId: normalizedRiderId,
@@ -343,7 +381,7 @@ async function logoutRider({ riderId, riderMode, riderName }) {
     throw Object.assign(new Error("riderId is required"), { statusCode: 400 });
   }
 
-  await markRiderPresence({
+  const presence = await markRiderPresence({
     riderId: normalizedRiderId,
     mode: riderMode,
     displayName: riderName || normalizedRiderId,
@@ -358,6 +396,12 @@ async function logoutRider({ riderId, riderMode, riderName }) {
     riderId: normalizedRiderId,
     riderMode,
     action: "RIDER_LOGOUT",
+  });
+  emitRiderRealtimeEvent("rider.presence", {
+    riderId: normalizedRiderId,
+    mode: riderMode,
+    shiftStatus: SHIFT_STATUS.OFFLINE,
+    updatedAt: presence?.updated_at || null,
   });
 
   return { ok: true };

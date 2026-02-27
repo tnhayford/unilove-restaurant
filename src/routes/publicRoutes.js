@@ -15,6 +15,7 @@ const {
 } = require("./schemas");
 const { listMenu } = require("../controllers/menuController");
 const { createOrder, trackOrder } = require("../controllers/orderController");
+const { streamOrderTrackingEvents } = require("../controllers/realtimeController");
 const { processUssd } = require("../controllers/ussdController");
 const { handleHubtelCallback } = require("../controllers/paymentController");
 const { verifyDelivery } = require("../controllers/deliveryController");
@@ -45,6 +46,11 @@ router.get("/store/status", asyncHandler(getPublicStoreStatus));
 
 router.post("/orders", validate(orderCreateSchema), asyncHandler(createOrder));
 router.get("/orders/track/:orderNumber", trackingLimiter, asyncHandler(trackOrder));
+router.get(
+  "/orders/track/:orderNumber/stream",
+  trackingLimiter,
+  asyncHandler(streamOrderTrackingEvents),
+);
 
 router.post("/ussd/interaction", validate(ussdRequestSchema), asyncHandler(processUssd));
 router.post("/payments/hubtel/callback", asyncHandler(handleHubtelCallback));

@@ -44,6 +44,7 @@ const { getSlaConfig } = require("./slaService");
 const { shouldSendCustomerSms } = require("./operationsPolicyService");
 const { assignDeliveryOrdersByWorkload } = require("./riderAssignmentService");
 const { listRiderRoster } = require("./riderPresenceService");
+const { publishOrderEvent } = require("./realtimeEventService");
 
 const ORDER_ACTION = {
   START_PROCESSING: "START_PROCESSING",
@@ -167,6 +168,26 @@ function getReadableStage(status) {
     default:
       return status;
   }
+}
+
+function toRealtimeOrderEnvelope(order, context = null) {
+  if (!order) return null;
+  return {
+    orderId: order.id || null,
+    orderNumber: order.order_number || order.orderNumber || null,
+    status: order.status || null,
+    deliveryType: order.delivery_type || order.deliveryType || null,
+    assignedRiderId: order.assigned_rider_id || order.assignedRiderId || null,
+    opsMonitoredAt: order.ops_monitored_at || order.opsMonitoredAt || null,
+    updatedAt: order.updated_at || order.updatedAt || new Date().toISOString(),
+    context,
+  };
+}
+
+function publishOrderRealtimeEvent(eventName, order, context = null) {
+  const payload = toRealtimeOrderEnvelope(order, context);
+  if (!payload) return;
+  publishOrderEvent(eventName, payload);
 }
 
 function normalizeStatusCheckToken(value) {
@@ -749,6 +770,10 @@ async function createOrderFromRequest(payload) {
   });
 
   const createdOrder = await getOrderById(orderId);
+  publishOrderRealtimeEvent("order.created", createdOrder, {
+    source: payload.source || "online",
+  });
+
   let slaConfig = DEFAULT_SLA_CONFIG;
   try {
     slaConfig = normalizeSlaConfig(await getSlaConfig());
@@ -907,8 +932,15 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
     });
   }
 
-  const updatedOrder = await getOrderById(orderId);
+  let updatedOrder = await getOrderById(orderId);
   await emitRiderDispatchAlert(updatedOrder, nextStatus);
+  updatedOrder = await getOrderById(orderId);
+  publishOrderRealtimeEvent("order.updated", updatedOrder, {
+    transition: {
+      from: order.status,
+      to: nextStatus,
+    },
+  });
   return updatedOrder;
 }
 
@@ -1094,7 +1126,12 @@ async function markOrderMonitored({ orderId, adminId }) {
     entityId: orderId,
     details: { source: "operations_board" },
   });
-  return getOrderDetails(orderId);
+  const details = await getOrderDetails(orderId);
+  publishOrderRealtimeEvent("order.monitored", details, {
+    actorType: "admin",
+    actorId: adminId || null,
+  });
+  return details;
 }
 
 async function getOrderHistoryForAdmin(filters = {}) {
@@ -1183,7 +1220,12 @@ async function assignOrderToRider({
     },
   });
 
-  return getOrderById(order.id);
+  const updatedOrder = await getOrderById(order.id);
+  publishOrderRealtimeEvent("order.assignment_updated", updatedOrder, {
+    actorType,
+    actorId,
+  });
+  return updatedOrder;
 }
 
 async function createInStoreOrder({

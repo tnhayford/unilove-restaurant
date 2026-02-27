@@ -1,10 +1,12 @@
 const {
   listOpenDeliveryOrdersForAssignment,
   setAssignedRider,
+  getOrderById,
 } = require("../repositories/orderRepository");
 const {
   listActiveAssignableRiders,
 } = require("./riderPresenceService");
+const { publishOrderEvent } = require("./realtimeEventService");
 
 const READY_FOR_PICKUP_STATUS = "READY_FOR_PICKUP";
 const OUT_FOR_DELIVERY_STATUS = "OUT_FOR_DELIVERY";
@@ -59,6 +61,20 @@ function toWorkloadMapObject(workloadByRider) {
   return output;
 }
 
+async function publishAssignmentUpdate(orderId) {
+  const order = await getOrderById(orderId);
+  if (!order) return;
+  publishOrderEvent("order.assignment_updated", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    status: order.status,
+    deliveryType: order.delivery_type,
+    assignedRiderId: order.assigned_rider_id,
+    updatedAt: order.updated_at || null,
+    context: { source: "auto_workload_balancer" },
+  });
+}
+
 async function assignDeliveryOrdersByWorkload({ targetOrderId = null } = {}) {
   const activeRiders = await listActiveAssignableRiders();
   const activeRiderIds = activeRiders.map((row) => row.id);
@@ -84,6 +100,7 @@ async function assignDeliveryOrdersByWorkload({ targetOrderId = null } = {}) {
       const assigned = normalizeAssignedRiderId(row.assigned_rider_id);
       if (assigned !== soleRiderId) {
         await setAssignedRider(row.id, soleRiderId);
+        await publishAssignmentUpdate(row.id);
         updated += 1;
       }
       workloadByRider.set(soleRiderId, (workloadByRider.get(soleRiderId) || 0) + 1);
@@ -115,6 +132,7 @@ async function assignDeliveryOrdersByWorkload({ targetOrderId = null } = {}) {
       nextAssigned = candidate.id;
       if (assigned !== nextAssigned) {
         await setAssignedRider(row.id, nextAssigned);
+        await publishAssignmentUpdate(row.id);
         updated += 1;
       }
     }
@@ -135,6 +153,7 @@ async function assignDeliveryOrdersByWorkload({ targetOrderId = null } = {}) {
       nextAssigned = candidate.id;
       if (assigned !== nextAssigned) {
         await setAssignedRider(row.id, nextAssigned);
+        await publishAssignmentUpdate(row.id);
         updated += 1;
       }
     }

@@ -77,6 +77,24 @@ module.exports = {
   enableSlaAlertJob: process.env.ENABLE_SLA_ALERT_JOB !== "false",
   slaAlertIntervalMs: Number(process.env.SLA_ALERT_INTERVAL_MS || 60000),
   slaAlertPhones: process.env.SLA_ALERT_PHONES || "",
+  enableDurableJobOrchestrator:
+    process.env.ENABLE_DURABLE_JOB_ORCHESTRATOR !== "false",
+  durableJobDispatchIntervalMs: Number(
+    process.env.DURABLE_JOB_DISPATCH_INTERVAL_MS || 5000,
+  ),
+  durableJobExecuteIntervalMs: Number(
+    process.env.DURABLE_JOB_EXECUTE_INTERVAL_MS || 2000,
+  ),
+  durableJobLeaseTtlSeconds: Number(
+    process.env.DURABLE_JOB_LEASE_TTL_SECONDS || 20,
+  ),
+  enableRealtimeSse: process.env.ENABLE_REALTIME_SSE !== "false",
+  realtimeSseHeartbeatMs: Number(
+    process.env.REALTIME_SSE_HEARTBEAT_MS || 25000,
+  ),
+  realtimeSseMaxClients: Number(
+    process.env.REALTIME_SSE_MAX_CLIENTS || 500,
+  ),
   adminDefaultEmail: process.env.ADMIN_DEFAULT_EMAIL || "admin@restaurant.local",
   adminDefaultPassword: process.env.ADMIN_DEFAULT_PASSWORD || "",
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),

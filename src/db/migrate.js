@@ -379,6 +379,38 @@ async function runMigrations() {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS job_schedules (
+      task_name TEXT PRIMARY KEY,
+      interval_ms INTEGER NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      payload_json TEXT,
+      next_run_at TEXT NOT NULL DEFAULT (datetime('now')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS job_runs (
+      id TEXT PRIMARY KEY,
+      task_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('queued', 'running', 'completed', 'failed')),
+      payload_json TEXT,
+      result_json TEXT,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      worker_id TEXT,
+      queued_at TEXT NOT NULL DEFAULT (datetime('now')),
+      started_at TEXT,
+      finished_at TEXT,
+      last_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS distributed_locks (
+      lock_key TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      lease_until TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
     CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
     CREATE INDEX IF NOT EXISTS idx_payments_client_reference ON payments(client_reference);
@@ -403,6 +435,13 @@ async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_guest_rider_devices_active ON guest_rider_devices(is_active);
     CREATE INDEX IF NOT EXISTS idx_rider_presence_mode_status ON rider_presence(mode, shift_status);
     CREATE INDEX IF NOT EXISTS idx_rider_presence_last_seen ON rider_presence(last_seen_at);
+    CREATE INDEX IF NOT EXISTS idx_job_schedules_due ON job_schedules(enabled, next_run_at);
+    CREATE INDEX IF NOT EXISTS idx_job_runs_status_queued ON job_runs(status, queued_at);
+    CREATE INDEX IF NOT EXISTS idx_job_runs_task_status ON job_runs(task_name, status);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_job_runs_task_pending_unique
+      ON job_runs(task_name)
+      WHERE status IN ('queued', 'running');
+    CREATE INDEX IF NOT EXISTS idx_distributed_locks_lease ON distributed_locks(lease_until);
   `);
 
   await ensureColumn(db, "orders", "order_number", "TEXT");
@@ -545,7 +584,11 @@ async function runMigrations() {
   await db.run(
     `INSERT OR IGNORE INTO system_settings (setting_key, setting_value)
      VALUES ('rider_guest_login_policy', ?)`,
-    [String(process.env.RIDER_GUEST_LOGIN_POLICY || "open").trim().toLowerCase() || "open"],
+    [
+      String(process.env.RIDER_GUEST_LOGIN_POLICY || "invite_only")
+        .trim()
+        .toLowerCase() || "invite_only",
+    ],
   );
   await db.run(
     `INSERT OR IGNORE INTO system_settings (setting_key, setting_value)

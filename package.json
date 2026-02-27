@@ -15,6 +15,7 @@
     "setup": "npm run migrate && npm run seed:menu && npm run seed:admin",
     "backdate:sample": "node scripts/backdateSampleOrders.js",
     "simulate:incoming": "node scripts/simulatePaidIncomingOrder.js",
+    "db:export:postgres": "node scripts/exportPostgresBundle.js",
     "test": "vitest run"
   },
   "keywords": [],

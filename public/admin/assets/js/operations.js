@@ -1,4 +1,6 @@
 const ORDER_REFRESH_MS = 12000;
+const ORDER_HEALTHCHECK_MS = 60000;
+const OPS_STREAM_RECONNECT_MS = 8000;
 const DELAY_THRESHOLD_MINUTES = 30;
 const OPS_ALERT_SOUND_URL = "/admin/assets/sounds/ops-incoming-alert.m4a";
 const MAX_VISIBLE_ORDER_CARDS_PER_LANE = 8;
@@ -78,6 +80,10 @@ const state = {
   riders: [],
   activeView: "orders",
   refreshTimerId: null,
+  opsEventSource: null,
+  opsStreamConnected: false,
+  opsStreamRetryTimerId: null,
+  realtimeRefreshTimerId: null,
   expandedOrderIds: new Set(),
   alertIntervalId: null,
   alertAudio: null,
@@ -994,6 +1000,102 @@ function mountTabHandlers() {
   });
 }
 
+function clearOpsStream() {
+  if (state.opsStreamRetryTimerId) {
+    clearTimeout(state.opsStreamRetryTimerId);
+    state.opsStreamRetryTimerId = null;
+  }
+  if (state.opsEventSource) {
+    state.opsEventSource.close();
+    state.opsEventSource = null;
+  }
+  state.opsStreamConnected = false;
+}
+
+function queueRealtimeRefresh() {
+  if (state.realtimeRefreshTimerId) return;
+  state.realtimeRefreshTimerId = setTimeout(() => {
+    state.realtimeRefreshTimerId = null;
+    if (document.hidden) return;
+    refreshBoard({ silent: true }).catch(() => {
+      // best effort realtime refresh
+    });
+  }, 300);
+}
+
+function scheduleOpsStreamReconnect() {
+  if (state.opsStreamRetryTimerId) {
+    clearTimeout(state.opsStreamRetryTimerId);
+  }
+  state.opsStreamRetryTimerId = setTimeout(() => {
+    if (document.hidden) return;
+    connectOpsStream();
+  }, OPS_STREAM_RECONNECT_MS);
+}
+
+function syncPollingLoop() {
+  if (state.refreshTimerId) {
+    clearInterval(state.refreshTimerId);
+    state.refreshTimerId = null;
+  }
+
+  const intervalMs = state.opsStreamConnected ? ORDER_HEALTHCHECK_MS : ORDER_REFRESH_MS;
+  state.refreshTimerId = setInterval(() => {
+    if (document.hidden) return;
+    refreshBoard({ silent: true }).catch(() => {
+      // best-effort polling
+    });
+  }, intervalMs);
+}
+
+function connectOpsStream() {
+  if (!window.EventSource) {
+    clearOpsStream();
+    syncPollingLoop();
+    return;
+  }
+
+  clearOpsStream();
+
+  const stream = new EventSource("/api/admin/events/ops-stream");
+  state.opsEventSource = stream;
+
+  stream.addEventListener("connected", () => {
+    state.opsStreamConnected = true;
+    syncPollingLoop();
+  });
+  stream.addEventListener("ops.snapshot", () => {
+    queueRealtimeRefresh();
+  });
+  stream.addEventListener("order.created", () => {
+    queueRealtimeRefresh();
+  });
+  stream.addEventListener("order.updated", () => {
+    queueRealtimeRefresh();
+  });
+  stream.addEventListener("order.assignment_updated", () => {
+    queueRealtimeRefresh();
+  });
+  stream.addEventListener("order.monitored", () => {
+    queueRealtimeRefresh();
+  });
+  stream.addEventListener("rider.presence", () => {
+    queueRealtimeRefresh();
+  });
+  stream.addEventListener("rider.device", () => {
+    queueRealtimeRefresh();
+  });
+
+  stream.onerror = () => {
+    if (state.opsEventSource !== stream) return;
+    state.opsStreamConnected = false;
+    stream.close();
+    state.opsEventSource = null;
+    syncPollingLoop();
+    scheduleOpsStreamReconnect();
+  };
+}
+
 async function fetchOrders() {
   try {
     const payload = await apiGet("/api/admin/orders");
@@ -1071,20 +1173,15 @@ function mountRefreshHandlers() {
     });
   }
 
-  if (state.refreshTimerId) {
-    clearInterval(state.refreshTimerId);
-  }
-  state.refreshTimerId = setInterval(() => {
-    if (document.hidden) return;
-    refreshBoard({ silent: true }).catch(() => {
-      // best-effort polling
-    });
-  }, ORDER_REFRESH_MS);
+  syncPollingLoop();
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       stopIncomingOrderAlertLoop();
       return;
+    }
+    if (!state.opsStreamConnected) {
+      connectOpsStream();
     }
     refreshBoard({ silent: true }).catch(() => {
       // best-effort
@@ -1121,11 +1218,17 @@ function mountBackHandler() {
   mountBackHandler();
   updateTabButtons(state.activeView);
   mountRefreshHandlers();
+  connectOpsStream();
   window.addEventListener("admin:alert-setting-changed", () => {
     syncIncomingOrderAlertLoop();
   });
   window.addEventListener("beforeunload", () => {
     stopIncomingOrderAlertLoop();
+    clearOpsStream();
+    if (state.realtimeRefreshTimerId) {
+      clearTimeout(state.realtimeRefreshTimerId);
+      state.realtimeRefreshTimerId = null;
+    }
   });
   await refreshBoard({ silent: false });
 })();

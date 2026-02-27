@@ -9,10 +9,14 @@ const STATUS_STEPS = [
 
 const FAILURE_STATUSES = new Set(["PAYMENT_FAILED", "CANCELED", "REFUNDED", "RETURNED"]);
 const TRACK_REFRESH_MS = 15000;
+const TRACK_STREAM_RECONNECT_MS = 8000;
 
 let activeOrderNumber = "";
 let activeTrackingToken = "";
 let refreshTimerId = null;
+let trackingEventSource = null;
+let trackingStreamConnected = false;
+let trackingStreamRetryTimerId = null;
 
 function parseAppTimestamp(input) {
   if (!input) return null;
@@ -272,16 +276,93 @@ function syncRefreshTimer() {
   }
 
   if (!activeOrderNumber || !activeTrackingToken || !autoRefreshEnabled()) return;
+  if (trackingStreamConnected) return;
 
   refreshTimerId = setInterval(() => {
     if (!activeOrderNumber || !activeTrackingToken || document.hidden) return;
-    runTrack(activeOrderNumber, activeTrackingToken, { silent: true }).catch(() => {
+    runTrack(activeOrderNumber, activeTrackingToken, {
+      silent: true,
+      skipRealtimeReconnect: true,
+    }).catch(() => {
       // best effort auto refresh
     });
   }, TRACK_REFRESH_MS);
 }
 
-async function runTrack(orderNumber, trackingTokenInput = null, { silent = false } = {}) {
+function closeTrackingStream() {
+  if (trackingStreamRetryTimerId) {
+    clearTimeout(trackingStreamRetryTimerId);
+    trackingStreamRetryTimerId = null;
+  }
+  if (trackingEventSource) {
+    trackingEventSource.close();
+    trackingEventSource = null;
+  }
+  trackingStreamConnected = false;
+}
+
+function scheduleTrackingStreamReconnect(orderNumber, trackingToken) {
+  if (trackingStreamRetryTimerId) {
+    clearTimeout(trackingStreamRetryTimerId);
+  }
+  trackingStreamRetryTimerId = setTimeout(() => {
+    if (!activeOrderNumber || !activeTrackingToken || document.hidden) return;
+    if (activeOrderNumber !== orderNumber || activeTrackingToken !== trackingToken) return;
+    connectTrackingStream(orderNumber, trackingToken);
+  }, TRACK_STREAM_RECONNECT_MS);
+}
+
+function connectTrackingStream(orderNumber, trackingToken) {
+  if (!window.EventSource || !autoRefreshEnabled()) {
+    closeTrackingStream();
+    syncRefreshTimer();
+    return;
+  }
+
+  closeTrackingStream();
+
+  const url = new URL(
+    `/api/orders/track/${encodeURIComponent(orderNumber)}/stream`,
+    window.location.origin,
+  );
+  url.searchParams.set("token", trackingToken);
+
+  const source = new EventSource(url.toString());
+  trackingEventSource = source;
+
+  source.addEventListener("connected", () => {
+    trackingStreamConnected = true;
+    syncRefreshTimer();
+  });
+
+  const refreshFromRealtime = () => {
+    if (!activeOrderNumber || !activeTrackingToken) return;
+    runTrack(activeOrderNumber, activeTrackingToken, {
+      silent: true,
+      skipRealtimeReconnect: true,
+    }).catch(() => {
+      // best effort realtime refresh
+    });
+  };
+
+  source.addEventListener("tracking.snapshot", refreshFromRealtime);
+  source.addEventListener("tracking.update", refreshFromRealtime);
+
+  source.onerror = () => {
+    if (trackingEventSource !== source) return;
+    trackingStreamConnected = false;
+    source.close();
+    trackingEventSource = null;
+    syncRefreshTimer();
+    scheduleTrackingStreamReconnect(orderNumber, trackingToken);
+  };
+}
+
+async function runTrack(
+  orderNumber,
+  trackingTokenInput = null,
+  { silent = false, skipRealtimeReconnect = false } = {},
+) {
   const normalized = sanitizeOrderNumber(orderNumber);
   const normalizedToken = sanitizeTrackingToken(
     trackingTokenInput === null
@@ -304,14 +385,27 @@ async function runTrack(orderNumber, trackingTokenInput = null, { silent = false
 
   try {
     const data = await fetchTracking(normalized, normalizedToken);
+    const previousOrder = activeOrderNumber;
+    const previousToken = activeTrackingToken;
     activeOrderNumber = normalized;
     activeTrackingToken = normalizedToken;
     document.getElementById("trackingTokenInput").value = normalizedToken;
     setOrderQuery(normalized);
     renderTracking(data);
     syncRefreshTimer();
+    if (
+      !skipRealtimeReconnect &&
+      (previousOrder !== normalized ||
+        previousToken !== normalizedToken ||
+        !trackingEventSource)
+    ) {
+      connectTrackingStream(normalized, normalizedToken);
+    }
     setStatus(`Order ${data.orderNumber} is currently ${stageLabelFromStatus(data.status, data.stage)}.`, "success");
   } catch (error) {
+    if (!silent) {
+      closeTrackingStream();
+    }
     setStatus(error.message || "Unable to track this order.", "error");
   } finally {
     if (!silent) {
@@ -348,6 +442,11 @@ document.getElementById("refreshNowBtn").addEventListener("click", async () => {
 });
 
 document.getElementById("autoRefreshToggle").addEventListener("change", () => {
+  if (!autoRefreshEnabled()) {
+    closeTrackingStream();
+  } else if (activeOrderNumber && activeTrackingToken) {
+    connectTrackingStream(activeOrderNumber, activeTrackingToken);
+  }
   syncRefreshTimer();
 });
 
@@ -362,9 +461,16 @@ document.addEventListener("visibilitychange", () => {
 
 window.addEventListener("focus", () => {
   if (!activeOrderNumber || !activeTrackingToken) return;
-  runTrack(activeOrderNumber, activeTrackingToken, { silent: true }).catch(() => {
+  runTrack(activeOrderNumber, activeTrackingToken, {
+    silent: true,
+    skipRealtimeReconnect: true,
+  }).catch(() => {
     // best effort focus refresh
   });
+});
+
+window.addEventListener("beforeunload", () => {
+  closeTrackingStream();
 });
 
 setText("autoRefreshLabel", `Auto refresh every ${Math.round(TRACK_REFRESH_MS / 1000)} seconds`);
