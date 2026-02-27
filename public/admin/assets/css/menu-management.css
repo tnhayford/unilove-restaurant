@@ -97,23 +97,29 @@
 
 .menu-main-column {
   min-height: 540px;
+  min-width: 0;
 }
 
 .menu-table-shell {
   padding: 0;
-  overflow: hidden;
+  overflow: auto;
+  max-width: 100%;
 }
 
 .menu-table {
   margin: 0;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
 }
 
 .menu-table th {
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .menu-table td {
   vertical-align: top;
+  overflow-wrap: anywhere;
 }
 
 .menu-row-summary > td {
@@ -449,6 +455,12 @@
 
   .menu-drawer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .menu-drawer-grid {
+    grid-template-columns: 1fr;
   }
 }
 
