@@ -85,6 +85,14 @@
 
         <section id="ordersBoardView" class="ops-view" role="tabpanel" aria-labelledby="ordersTabBtn">
           <div class="board ops-order-board">
+            <section class="lane lane-incoming_paid">
+              <div class="lane-header">
+                <span class="lane-title">Incoming Paid</span>
+                <span id="incomingPaidCount" class="badge-count">0</span>
+              </div>
+              <div id="incomingPaidLane" class="lane-content"></div>
+            </section>
+
             <section class="lane lane-awaiting_payment">
               <div class="lane-header">
                 <span class="lane-title">Awaiting Payment</span>

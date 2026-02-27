@@ -44,6 +44,72 @@ const STAFF_DEFAULTS = {
   "payments.reconcile": false,
 };
 
+const CASHIER_DEFAULTS = {
+  ...STAFF_DEFAULTS,
+  "menu.edit": false,
+  "incidents.manage": false,
+  "disputes.manage": false,
+  "analytics.view": false,
+  "logs.view": false,
+  "reports.generate": false,
+  "reports.download": false,
+  "customers.export": false,
+  "settings.store": false,
+  "settings.sla": false,
+  "payments.reconcile": false,
+};
+
+const KITCHEN_DEFAULTS = {
+  "orders.view": true,
+  "orders.monitor": true,
+  "orders.update_status": true,
+  "orders.cancel": false,
+  "orders.refund": false,
+  "instore.create": false,
+  "menu.view": false,
+  "menu.edit": false,
+  "analytics.view": false,
+  "logs.view": false,
+  "staff.manage": false,
+  "settings.store": false,
+  "settings.sla": false,
+  "incidents.manage": false,
+  "disputes.manage": false,
+  "reports.generate": false,
+  "reports.download": false,
+  "customers.export": false,
+  "payments.reconcile": false,
+};
+
+const MANAGER_DEFAULTS = {
+  "orders.view": true,
+  "orders.monitor": true,
+  "orders.update_status": true,
+  "orders.cancel": true,
+  "orders.refund": true,
+  "instore.create": true,
+  "menu.view": true,
+  "menu.edit": true,
+  "analytics.view": true,
+  "logs.view": true,
+  "staff.manage": false,
+  "settings.store": true,
+  "settings.sla": true,
+  "incidents.manage": true,
+  "disputes.manage": true,
+  "reports.generate": true,
+  "reports.download": true,
+  "customers.export": true,
+  "payments.reconcile": true,
+};
+
+const ROLE_DEFAULTS = {
+  staff: STAFF_DEFAULTS,
+  cashier: CASHIER_DEFAULTS,
+  kitchen: KITCHEN_DEFAULTS,
+  manager: MANAGER_DEFAULTS,
+};
+
 function applyPermissionDependencies(input = {}) {
   const normalized = { ...input };
 
@@ -92,7 +158,8 @@ async function getUserPermissionOverrides(userId) {
 
 async function getUserPermissions(user) {
   if (!user) return {};
-  if ((user.role || "staff") === "admin") {
+  const role = String(user.role || "staff").trim().toLowerCase();
+  if (role === "admin") {
     const full = {};
     ACTIONS.forEach((action) => {
       full[action] = true;
@@ -100,14 +167,15 @@ async function getUserPermissions(user) {
     return full;
   }
 
+  const defaults = ROLE_DEFAULTS[role] || STAFF_DEFAULTS;
   const overrides = await getUserPermissionOverrides(user.id);
   return {
-    ...STAFF_DEFAULTS,
+    ...defaults,
     ...overrides,
   };
 }
 
-async function setUserPermissions(userId, permissions = {}) {
+async function setUserPermissions(userId, permissions = {}, role = "staff") {
   const normalized = normalizePermissions(permissions);
   await runInWriteTransaction(async (db) => {
     await db.run("DELETE FROM admin_permissions WHERE user_id = ?", [userId]);
@@ -119,7 +187,12 @@ async function setUserPermissions(userId, permissions = {}) {
       );
     }
   });
-  return getUserPermissions({ id: userId, role: "staff" });
+  return getUserPermissions({ id: userId, role });
+}
+
+async function clearUserPermissionOverrides(userId) {
+  const db = await getDb();
+  await db.run("DELETE FROM admin_permissions WHERE user_id = ?", [userId]);
 }
 
 module.exports = {
@@ -127,4 +200,5 @@ module.exports = {
   STAFF_DEFAULTS,
   getUserPermissions,
   setUserPermissions,
+  clearUserPermissionOverrides,
 };

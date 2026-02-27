@@ -254,11 +254,19 @@ const AdminLayout = (() => {
     return Boolean(permissions[required]);
   }
 
-  function getFirstAllowedPath(isAdmin, permissions = {}) {
+  function isPathAllowedByRole(role, path) {
+    if (role !== "kitchen") return true;
+    return ["/admin/kitchen.html", "/admin/order-detail.html"].includes(path);
+  }
+
+  function getFirstAllowedPath(isAdmin, permissions = {}, role = "staff") {
+    if (role === "kitchen") {
+      return "/admin/kitchen.html";
+    }
     for (const entry of NAV_LINKS) {
       const required = PATH_PERMISSION[entry.href];
       const allowedByPermission = hasPagePermission(required, permissions);
-      const allowed = (entry.adminOnly ? isAdmin : true) && allowedByPermission;
+      const allowed = (entry.adminOnly ? isAdmin : true) && allowedByPermission && isPathAllowedByRole(role, entry.href);
       if (allowed) return entry.href;
     }
     return "/admin/login.html";
@@ -266,6 +274,7 @@ const AdminLayout = (() => {
 
   function applyRoleAccess(admin) {
     const isAdmin = (admin.role || "staff") === "admin";
+    const role = String(admin.role || "staff").trim().toLowerCase();
     const permissions = admin.permissions || {};
     const nav = document.querySelector(".nav-links");
     let hiddenCount = 0;
@@ -278,7 +287,7 @@ const AdminLayout = (() => {
           if (!config) return;
           const required = PATH_PERMISSION[path];
           const allowedByPermission = hasPagePermission(required, permissions);
-          const allowed = (config.adminOnly ? isAdmin : true) && allowedByPermission;
+          const allowed = (config.adminOnly ? isAdmin : true) && allowedByPermission && isPathAllowedByRole(role, path);
           link.style.display = allowed ? "" : "none";
           if (!allowed) {
             hiddenCount += 1;
@@ -300,12 +309,13 @@ const AdminLayout = (() => {
     const currentPath = window.location.pathname;
     const currentRequired = PATH_PERMISSION[currentPath];
     const hasCurrentPermission = hasPagePermission(currentRequired, permissions);
+    const allowedByRole = isPathAllowedByRole(role, currentPath);
     if (!isAdmin && STAFF_RESTRICTED_PATHS.has(currentPath)) {
-      window.location.href = getFirstAllowedPath(isAdmin, permissions);
+      window.location.href = getFirstAllowedPath(isAdmin, permissions, role);
       return false;
     }
-    if (!hasCurrentPermission) {
-      window.location.href = getFirstAllowedPath(isAdmin, permissions);
+    if (!hasCurrentPermission || !allowedByRole) {
+      window.location.href = getFirstAllowedPath(isAdmin, permissions, role);
       return false;
     }
     return true;

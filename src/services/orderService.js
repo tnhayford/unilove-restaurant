@@ -1011,6 +1011,19 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
 
   if (nextStatus === ORDER_STATUS.DELIVERED && paymentMethod === PAYMENT_METHOD.CASH_ON_DELIVERY) {
     await setPaymentStatus(orderId, PAYMENT_STATUS.PAID, { markConfirmedAt: true });
+    await logSensitiveAction({
+      actorType: actorType || "system",
+      actorId: actorId || null,
+      action: "COD_CASH_COLLECTION_CONFIRMED",
+      entityType: "order",
+      entityId: orderId,
+      details: {
+        orderNumber: order.order_number,
+        amount: Number(order.subtotal_cedis || 0),
+        assignedRiderId: order.assigned_rider_id || null,
+        source: order.source || null,
+      },
+    });
     await issueLoyaltyForPaidOrder(orderId);
   }
 
@@ -1054,6 +1067,21 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
   }
 
   if (nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+    if (paymentMethod === PAYMENT_METHOD.CASH_ON_DELIVERY) {
+      await logSensitiveAction({
+        actorType: actorType || "system",
+        actorId: actorId || null,
+        action: "COD_COLLECTION_PENDING_WITH_RIDER",
+        entityType: "order",
+        entityId: orderId,
+        details: {
+          orderNumber: order.order_number,
+          amount: Number(order.subtotal_cedis || 0),
+          assignedRiderId: order.assigned_rider_id || null,
+          paymentStatus: order.payment_status || PAYMENT_STATUS.PENDING,
+        },
+      });
+    }
     const dispatchSnapshot = await getOrderById(orderId);
     await ensureDeliveryOtpPrepared(orderId, dispatchSnapshot);
   }

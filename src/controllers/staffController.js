@@ -14,6 +14,7 @@ const {
   ACTIONS,
   getUserPermissions,
   setUserPermissions,
+  clearUserPermissionOverrides,
 } = require("../services/permissionService");
 
 function toPublicUser(user) {
@@ -90,6 +91,9 @@ async function updateStaff(req, res) {
       fullName: fullNameUpdated ? req.validatedBody.fullName : existing.full_name,
       role: roleUpdated ? req.validatedBody.role : existing.role,
     });
+    if (roleUpdated && String(updated.role || "").trim() !== String(existing.role || "").trim()) {
+      await clearUserPermissionOverrides(existing.id);
+    }
   }
 
   if (passwordUpdated) {
@@ -198,7 +202,7 @@ async function updateStaffPermissions(req, res) {
         requestedAllowedCount,
       },
     });
-    const permissions = await setUserPermissions(userId, requested);
+    const permissions = await setUserPermissions(userId, requested, existing.role || "staff");
     const normalizedMismatch = ACTIONS.filter((action) => Boolean(requested[action]) !== Boolean(permissions[action]));
 
     if (normalizedMismatch.length) {

@@ -773,6 +773,7 @@ function setDeliveryType(type) {
   const pickupBtn = document.getElementById("pickupBtn");
   const deliveryBtn = document.getElementById("deliveryBtn");
   const addressWrap = document.getElementById("addressWrap");
+  const paymentMethod = document.getElementById("paymentMethod");
 
   if (type === "pickup") {
     pickupBtn.classList.add("primary");
@@ -787,9 +788,30 @@ function setDeliveryType(type) {
     pickupBtn.setAttribute("aria-pressed", "false");
     addressWrap.style.display = "block";
   }
+
+  if (paymentMethod) {
+    const codOption = paymentMethod.querySelector('option[value="cash_on_delivery"]');
+    if (codOption) {
+      codOption.disabled = type !== "delivery";
+    }
+
+    if (type !== "delivery" && paymentMethod.value === "cash_on_delivery") {
+      paymentMethod.value = "cash";
+      setActionFeedback("Cash on delivery is only available for delivery orders.", "helper");
+    }
+    setPaymentMethod(paymentMethod.value);
+  }
 }
 
 function setPaymentMethod(method) {
+  const deliveryType = document.getElementById("deliveryType")?.value || "pickup";
+  const paymentMethod = document.getElementById("paymentMethod");
+  if (method === "cash_on_delivery" && deliveryType !== "delivery") {
+    if (paymentMethod) paymentMethod.value = "cash";
+    method = "cash";
+    setActionFeedback("Cash on delivery is only available for delivery orders.", "helper");
+  }
+
   const wrap = document.getElementById("momoChannelWrap");
   wrap.style.display = method === "momo" ? "block" : "none";
   if (method !== "momo") {
@@ -855,6 +877,11 @@ function updateActionButtonState() {
 
   if (paymentMethod === "cash") {
     button.textContent = "Create Order";
+    return;
+  }
+
+  if (paymentMethod === "cash_on_delivery") {
+    button.textContent = "Create COD Order";
     return;
   }
 
@@ -1506,7 +1533,9 @@ function renderResult(order) {
         }
       }
 
-      const actionLabel = payload.paymentMethod === "momo" ? "Take payment prompt" : "Create cash order";
+      const actionLabel = payload.paymentMethod === "momo"
+        ? "Take payment prompt"
+        : (payload.paymentMethod === "cash_on_delivery" ? "Create COD delivery order" : "Create cash order");
       const confirmedApply = await AdminLayout.confirmAction(
         `${actionLabel} for ${payload.fullName} (${payload.phone})?`,
         { title: "Confirm In-Store Update", confirmLabel: "Apply" },
@@ -1538,6 +1567,12 @@ function renderResult(order) {
         );
         clearVerificationState();
         updateActionButtonState();
+      } else if (payload.paymentMethod === "cash_on_delivery") {
+        setActionFeedback(`COD order ${order.order_number} moved to kitchen queue.`, "success");
+        await AdminLayout.notifyAction(
+          `COD order ${order.order_number} created. Dispatch rider to collect cash at delivery.`,
+          { title: "COD Order Created" },
+        );
       } else {
         setActionFeedback(`Cash order ${order.order_number} moved to kitchen queue.`, "success");
         await AdminLayout.notifyAction(

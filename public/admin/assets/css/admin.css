@@ -6,51 +6,51 @@
   --font-display: "Space Grotesk", "Segoe UI", sans-serif;
   --sidebar-width: 265px;
 
-  --bg: #f7f2eb;
+  --bg: #edf4fb;
   --bg-elevated: #ffffff;
-  --text: #2a1e16;
-  --text-soft: #7a6355;
-  --line: #e2d4c8;
-  --brand: #d36c2b;
-  --brand-strong: #b5531f;
+  --text: #17283a;
+  --text-soft: #5d7287;
+  --line: #cfdeec;
+  --brand: #149682;
+  --brand-strong: #0f7767;
   --danger: #bb3d3d;
-  --warning: #9a5a15;
+  --warning: #9b6a0f;
   --info: #1f6fa9;
-  --shadow: 0 18px 34px rgba(54, 35, 24, 0.12);
+  --shadow: 0 18px 34px rgba(18, 44, 73, 0.12);
   --grad-main:
-    radial-gradient(circle at 8% 6%, #fff5e8 0%, transparent 32%),
-    radial-gradient(circle at 92% 16%, #ffe8d3 0%, transparent 30%),
-    linear-gradient(165deg, #fbf6ef 0%, #f8efe5 45%, #f4e6d8 100%);
-  --sidebar-bg: linear-gradient(180deg, #2f221a 0%, #3b2a1f 35%, #483124 100%);
-  --sidebar-accent: #644431;
-  --sidebar-line: #76513b;
-  --sidebar-text: #f5e9dd;
-  --sidebar-text-soft: #d8bca8;
-  --sidebar-brand-surface: color-mix(in srgb, #f5a15f 22%, transparent);
-  --sidebar-link-active-bg: color-mix(in srgb, #f5a15f 24%, transparent);
+    radial-gradient(circle at 8% 6%, #f9fdff 0%, transparent 34%),
+    radial-gradient(circle at 92% 16%, #dff4ff 0%, transparent 32%),
+    linear-gradient(165deg, #f5faff 0%, #eef5fc 48%, #e8f0f9 100%);
+  --sidebar-bg: linear-gradient(180deg, #0f2437 0%, #183147 40%, #1c3f58 100%);
+  --sidebar-accent: #214560;
+  --sidebar-line: #2a5776;
+  --sidebar-text: #e7f2fb;
+  --sidebar-text-soft: #bdd2e2;
+  --sidebar-brand-surface: color-mix(in srgb, #3db8ff 20%, transparent);
+  --sidebar-link-active-bg: color-mix(in srgb, #4ab6f2 26%, transparent);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1e1510;
-  --bg-elevated: #2a1d15;
-  --text: #f5e7da;
-  --text-soft: #c9ad98;
-  --line: #4a3528;
-  --brand: #f0904f;
-  --brand-strong: #d7783a;
+  --bg: #0f1925;
+  --bg-elevated: #172535;
+  --text: #e7f1fb;
+  --text-soft: #9eb5cb;
+  --line: #2d4458;
+  --brand: #2dc2ac;
+  --brand-strong: #1fa591;
   --danger: #ff7676;
-  --warning: #f1a744;
+  --warning: #f0b24b;
   --info: #58a7df;
-  --shadow: 0 14px 24px rgba(5, 2, 1, 0.42);
-  --grad-main: linear-gradient(145deg, #23170f 0%, #1f1a13 100%);
-  --sidebar-bg: linear-gradient(180deg, #18130f 0%, #201810 35%, #281d14 100%);
-  --sidebar-accent: #3a2c20;
-  --sidebar-line: #473326;
-  --sidebar-text: #f4e6da;
-  --sidebar-text-soft: #ccb39f;
-  --sidebar-brand-surface: color-mix(in srgb, #f0904f 20%, transparent);
-  --sidebar-link-active-bg: color-mix(in srgb, #f0904f 24%, transparent);
+  --shadow: 0 14px 24px rgba(3, 9, 15, 0.45);
+  --grad-main: linear-gradient(145deg, #101a27 0%, #132130 100%);
+  --sidebar-bg: linear-gradient(180deg, #0d1520 0%, #121f2d 40%, #173247 100%);
+  --sidebar-accent: #1b3348;
+  --sidebar-line: #22405a;
+  --sidebar-text: #e5f0fb;
+  --sidebar-text-soft: #9fb8cf;
+  --sidebar-brand-surface: color-mix(in srgb, #2db4ff 22%, transparent);
+  --sidebar-link-active-bg: color-mix(in srgb, #2db4ff 28%, transparent);
 }
 
 * {
@@ -702,7 +702,8 @@ select option {
   padding-right: 2px;
 }
 
-.lane-incoming .lane-header {
+.lane-incoming .lane-header,
+.lane-incoming_paid .lane-header {
   border-left: 4px solid #2d6cdf;
 }
 
@@ -2523,7 +2524,7 @@ select option {
 }
 
 .ops-order-board {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .ops-exceptions-board {

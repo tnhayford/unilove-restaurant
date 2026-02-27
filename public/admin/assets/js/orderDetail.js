@@ -136,8 +136,14 @@ function renderRiderAssignment(order, refreshFn) {
   const e = AdminCore.escapeHtml;
   const container = document.getElementById("riderAssign");
   if (!container) return;
+  const currentAdmin = (typeof AdminLayout !== "undefined" && AdminLayout && typeof AdminLayout.getCurrentAdmin === "function")
+    ? AdminLayout.getCurrentAdmin()
+    : null;
+  const adminRole = String(currentAdmin?.role || "staff").trim().toLowerCase();
+  const canManuallyAssign = ["admin", "manager", "staff", "cashier"].includes(adminRole);
+  const statusAllowsAssignment = ["READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "PREPARING", "PAID"].includes(order.status);
 
-  if (order.delivery_type !== "delivery") {
+  if (order.delivery_type !== "delivery" || !canManuallyAssign || !statusAllowsAssignment) {
     container.innerHTML = "";
     return;
   }

@@ -109,10 +109,11 @@ function ensureAlertAudio() {
 function isKitchenAlertCandidate(order) {
   if (!order) return false;
   if (order.status !== "PAID") return false;
-  if (!["online", "ussd"].includes(order.source)) return false;
-  const prepaidCaptured = order.paymentStatus === "PAID";
-  const codPending = order.paymentMethod === "cash_on_delivery" && order.paymentStatus === "PENDING";
-  if (!prepaidCaptured && !codPending) return false;
+  const isCod = order.paymentMethod === "cash_on_delivery";
+  const isPaidOrCollectable = isCod
+    ? order.paymentStatus !== "FAILED"
+    : order.paymentStatus === "PAID";
+  if (!isPaidOrCollectable) return false;
   return !String(order.opsMonitoredAt || "").trim();
 }
 

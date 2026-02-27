@@ -34,6 +34,12 @@ const FINAL_STATUSES = new Set(["DELIVERED", "RETURNED", "REFUNDED", "CANCELED",
 
 const ACTIVE_ORDER_LANES = [
   {
+    key: "incomingPaid",
+    laneId: "incomingPaidLane",
+    countId: "incomingPaidCount",
+    statuses: ["PAID"],
+  },
+  {
     key: "awaitingPayment",
     laneId: "awaitingPaymentLane",
     countId: "awaitingPaymentCount",
@@ -43,7 +49,7 @@ const ACTIVE_ORDER_LANES = [
     key: "kitchen",
     laneId: "kitchenLane",
     countId: "kitchenCount",
-    statuses: ["PAID", "PREPARING"],
+    statuses: ["PREPARING"],
   },
   {
     key: "readyDispatch",
@@ -165,13 +171,13 @@ function ensureIncomingOrderAlertAudio(tone) {
 function isAlertCandidateOrder(order) {
   if (!order) return false;
   if (normalizeStatus(order.status) !== "PAID") return false;
-  const source = String(order.source || "").trim().toLowerCase();
-  if (!["online", "ussd"].includes(source)) return false;
   const paymentMethod = String(order.paymentMethod || "momo").trim().toLowerCase();
   const paymentStatus = String(order.paymentStatus || "PENDING").trim().toUpperCase();
-  const prepaidCaptured = paymentStatus === "PAID";
-  const codPending = paymentMethod === "cash_on_delivery" && paymentStatus === "PENDING";
-  if (!prepaidCaptured && !codPending) return false;
+  const isCod = paymentMethod === "cash_on_delivery";
+  const isPaidOrCollectable = isCod
+    ? paymentStatus !== "FAILED"
+    : paymentStatus === "PAID";
+  if (!isPaidOrCollectable) return false;
   return !String(order.opsMonitoredAt || "").trim();
 }
 

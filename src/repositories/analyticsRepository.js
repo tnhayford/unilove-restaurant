@@ -270,6 +270,123 @@ async function getOperationalCounts(filters = {}) {
   );
 }
 
+async function getPaymentLocationSummary(filters = {}) {
+  const db = await getDb();
+  const clauses = [];
+  const params = [];
+  addOrderFilters({
+    filters,
+    clauses,
+    params,
+    dateField: "created_at",
+  });
+
+  return db.get(
+    `SELECT
+       ROUND(COALESCE(SUM(CASE
+         WHEN payment_status = 'PAID'
+           AND status NOT IN ('REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+         THEN subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS collected_total,
+       ROUND(COALESCE(SUM(CASE
+         WHEN payment_status <> 'PAID'
+           AND status NOT IN ('REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+         THEN subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS outstanding_total,
+       ROUND(COALESCE(SUM(CASE
+         WHEN status = 'REFUNDED' THEN subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS refunded_total,
+       ROUND(COALESCE(SUM(CASE
+         WHEN status = 'CANCELED' THEN subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS canceled_total
+     FROM orders
+     ${toWhere(clauses)}`,
+    params,
+  );
+}
+
+async function getRevenueByPaymentChannel(filters = {}) {
+  const db = await getDb();
+  const clauses = [];
+  const params = [];
+  addOrderFilters({
+    filters,
+    clauses,
+    params,
+    dateField: "created_at",
+  });
+
+  return db.all(
+    `SELECT
+       source,
+       delivery_type,
+       payment_method,
+       payment_status,
+       COUNT(*) AS orders_count,
+       ROUND(COALESCE(SUM(subtotal_cedis), 0), 2) AS gross_amount,
+       ROUND(COALESCE(SUM(CASE
+         WHEN payment_status = 'PAID'
+           AND status NOT IN ('REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+         THEN subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS collected_amount,
+       ROUND(COALESCE(SUM(CASE
+         WHEN payment_status <> 'PAID'
+           AND status NOT IN ('REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+         THEN subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS outstanding_amount
+     FROM orders
+     ${toWhere(clauses)}
+     GROUP BY source, delivery_type, payment_method, payment_status
+     ORDER BY source ASC, delivery_type ASC, payment_method ASC, payment_status ASC`,
+    params,
+  );
+}
+
+async function getCodCollectionByRider(filters = {}) {
+  const db = await getDb();
+  const clauses = ["o.payment_method = 'cash_on_delivery'"];
+  const params = [];
+  addOrderFilters({
+    filters,
+    clauses,
+    params,
+    alias: "o",
+    dateField: "created_at",
+  });
+
+  return db.all(
+    `SELECT
+       COALESCE(o.assigned_rider_id, 'unassigned') AS rider_id,
+       COALESCE(r.full_name, o.assigned_rider_id, 'Unassigned') AS rider_name,
+       COUNT(*) AS cod_orders,
+       ROUND(COALESCE(SUM(o.subtotal_cedis), 0), 2) AS cod_total,
+       ROUND(COALESCE(SUM(CASE
+         WHEN o.payment_status = 'PAID'
+           AND o.status NOT IN ('REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+         THEN o.subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS cod_collected,
+       ROUND(COALESCE(SUM(CASE
+         WHEN o.payment_status <> 'PAID'
+           AND o.status NOT IN ('REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+         THEN o.subtotal_cedis
+         ELSE 0
+       END), 0), 2) AS cod_outstanding
+     FROM orders o
+     LEFT JOIN riders r ON r.id = o.assigned_rider_id
+     WHERE ${clauses.join(" AND ")}
+     GROUP BY rider_id, rider_name
+     ORDER BY cod_outstanding DESC, cod_total DESC`,
+    params,
+  );
+}
+
 module.exports = {
   getDailyRevenue,
   getMonthlyRevenue,
@@ -280,4 +397,7 @@ module.exports = {
   getStatusBreakdown,
   getSourceBreakdown,
   getOperationalCounts,
+  getPaymentLocationSummary,
+  getRevenueByPaymentChannel,
+  getCodCollectionByRider,
 };

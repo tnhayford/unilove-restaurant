@@ -24,7 +24,11 @@ function formatDate(value) {
 
 function roleBadge(role) {
   const safeRole = AdminCore.escapeHtml(role);
-  return `<span class="pill ${role === "admin" ? "pickup" : "delivery"}">${safeRole}</span>`;
+  if (role === "admin") return `<span class="pill pickup">${safeRole}</span>`;
+  if (role === "manager") return `<span class="pill delivery">${safeRole}</span>`;
+  if (role === "kitchen") return `<span class="pill warning">${safeRole}</span>`;
+  if (role === "cashier") return `<span class="pill warning">${safeRole}</span>`;
+  return `<span class="pill delivery">${safeRole}</span>`;
 }
 
 function renderRows() {
@@ -51,6 +55,9 @@ function renderRows() {
         <div class="staff-actions">
           <select class="select staff-role-select" data-role="role">
             <option value="staff" ${row.role === "staff" ? "selected" : ""}>staff</option>
+            <option value="cashier" ${row.role === "cashier" ? "selected" : ""}>cashier</option>
+            <option value="kitchen" ${row.role === "kitchen" ? "selected" : ""}>kitchen</option>
+            <option value="manager" ${row.role === "manager" ? "selected" : ""}>manager</option>
             <option value="admin" ${row.role === "admin" ? "selected" : ""}>admin</option>
           </select>
           <button type="button" class="btn btn-sm" data-role="save-role">Save Role</button>
@@ -107,18 +114,18 @@ function renderPermissionUserSelect() {
   const select = document.getElementById("permissionUserSelect");
   if (!select) return;
   const previous = select.value;
-  const staffOnly = staffRows.filter((row) => row.role === "staff");
+  const nonAdminRows = staffRows.filter((row) => row.role !== "admin");
   select.innerHTML = "";
-  staffOnly.forEach((row) => {
+  nonAdminRows.forEach((row) => {
     const option = document.createElement("option");
     option.value = row.id;
     option.textContent = `${row.fullName || displayNameFromEmail(row.email)} (${row.email})`;
     select.appendChild(option);
   });
-  if (previous && staffOnly.some((row) => row.id === previous)) {
+  if (previous && nonAdminRows.some((row) => row.id === previous)) {
     select.value = previous;
   }
-  if (!staffOnly.length) {
+  if (!nonAdminRows.length) {
     loadedPermissionUserId = "";
   }
 }

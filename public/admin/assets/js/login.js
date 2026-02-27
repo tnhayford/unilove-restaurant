@@ -3,6 +3,18 @@
   const params = new URLSearchParams(window.location.search);
   const nextPath = AdminCore.toSafeAdminPath(params.get("next") || "");
 
+  function getRoleLandingPath(admin) {
+    const role = String(admin?.role || "").trim().toLowerCase();
+    if (role === "kitchen") return "/admin/kitchen.html";
+    if (role === "cashier") return "/admin/instore.html";
+    return "/admin/operations.html";
+  }
+
+  function resolveNextPath(admin) {
+    if (nextPath && nextPath !== "/admin/operations.html") return nextPath;
+    return getRoleLandingPath(admin);
+  }
+
   const form = document.getElementById("loginForm");
   const status = document.getElementById("loginStatus");
 
@@ -13,8 +25,8 @@
 
   try {
     await AdminCore.fetchCsrfToken(true);
-    await AdminCore.ensureAuthenticated({ redirect: false });
-    window.location.href = nextPath;
+    const admin = await AdminCore.ensureAuthenticated({ redirect: false });
+    window.location.href = resolveNextPath(admin);
     return;
   } catch {
     // not logged in yet
@@ -41,8 +53,9 @@
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
+      const admin = await AdminCore.ensureAuthenticated({ redirect: false });
       setStatus("Login successful. Redirecting...", "success");
-      window.location.href = nextPath;
+      window.location.href = resolveNextPath(admin);
     } catch (error) {
       setStatus(error.message || "Login failed", "error");
     }

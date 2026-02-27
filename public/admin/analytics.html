@@ -114,6 +114,22 @@
             <div class="label">Payment Conversion</div>
             <div class="value" id="paymentConversionValue">0%</div>
           </article>
+          <article class="kpi-card accent-mint">
+            <div class="label">Money Collected</div>
+            <div class="value" id="collectedMoneyValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-amber">
+            <div class="label">Outstanding To Collect</div>
+            <div class="value" id="outstandingMoneyValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-coral">
+            <div class="label">Refunded Value</div>
+            <div class="value" id="refundedMoneyValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-warm">
+            <div class="label">COD Outstanding</div>
+            <div class="value" id="codOutstandingValue">GHS 0.00</div>
+          </article>
         </section>
 
         <section class="analytics-main-grid">
@@ -164,6 +180,37 @@
                 </tr>
               </thead>
               <tbody id="topItemsBody"></tbody>
+            </table>
+          </section>
+
+          <section class="panel table-wrap">
+            <h3>Money by Channel</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>Orders</th>
+                  <th>Collected</th>
+                  <th>Outstanding</th>
+                  <th>Gross</th>
+                </tr>
+              </thead>
+              <tbody id="moneyBucketsBody"></tbody>
+            </table>
+          </section>
+
+          <section class="panel table-wrap">
+            <h3>Cash on Delivery by Rider</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Rider</th>
+                  <th>COD Orders</th>
+                  <th>Collected</th>
+                  <th>Outstanding</th>
+                </tr>
+              </thead>
+              <tbody id="codRiderBody"></tbody>
             </table>
           </section>
 

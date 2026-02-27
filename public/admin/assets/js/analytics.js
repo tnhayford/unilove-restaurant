@@ -61,6 +61,53 @@ function renderBreakdownRows(containerId, rows, firstKey, secondKey) {
   });
 }
 
+function renderMoneyBuckets(rows) {
+  const e = AdminCore.escapeHtml;
+  const tbody = document.getElementById("moneyBucketsBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="order-meta">No money channel data.</td></tr>';
+    return;
+  }
+
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${e(row.label || row.key || "-")}</td>
+      <td>${Number(row.ordersCount || 0)}</td>
+      <td>GHS ${AdminCore.money(row.collectedAmount)}</td>
+      <td>GHS ${AdminCore.money(row.outstandingAmount)}</td>
+      <td>GHS ${AdminCore.money(row.grossAmount)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderCodByRider(rows) {
+  const e = AdminCore.escapeHtml;
+  const tbody = document.getElementById("codRiderBody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!rows || !rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="order-meta">No COD rider data.</td></tr>';
+    return;
+  }
+
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${e(row.rider_name || row.rider_id || "Unassigned")}</td>
+      <td>${Number(row.cod_orders || 0)}</td>
+      <td>GHS ${AdminCore.money(row.cod_collected)}</td>
+      <td>GHS ${AdminCore.money(row.cod_outstanding)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
 function buildAnalyticsQuery() {
   const params = new URLSearchParams();
   const startDate = document.getElementById("analyticsStartDate").value;
@@ -130,10 +177,21 @@ async function refreshAnalytics() {
     totalOrders > 0 ? ((paidLifecycleOrders / totalOrders) * 100).toFixed(2) : "0.00";
   document.getElementById("paymentConversionValue").textContent = `${paymentConversion}%`;
 
+  const moneySummary = data.moneyLocationSummary || {};
+  const moneyBuckets = data.moneyBuckets || [];
+  const codByRider = data.codCollectionByRider || [];
+  const codOutstandingTotal = codByRider.reduce((sum, row) => sum + Number(row.cod_outstanding || 0), 0);
+  document.getElementById("collectedMoneyValue").textContent = `GHS ${AdminCore.money(moneySummary.collectedTotal)}`;
+  document.getElementById("outstandingMoneyValue").textContent = `GHS ${AdminCore.money(moneySummary.outstandingTotal)}`;
+  document.getElementById("refundedMoneyValue").textContent = `GHS ${AdminCore.money(moneySummary.refundedTotal)}`;
+  document.getElementById("codOutstandingValue").textContent = `GHS ${AdminCore.money(codOutstandingTotal)}`;
+
   renderBars("dailyRevenueChart", data.dailyRevenue || [], "day", "revenue");
   renderBars("monthlyRevenueChart", data.monthlyRevenue || [], "month", "revenue");
   renderBars("loyaltyChart", data.loyaltyIssuedPerDay || [], "day", "loyalty_points_issued");
   renderTopItems(data.topItems || []);
+  renderMoneyBuckets(moneyBuckets);
+  renderCodByRider(codByRider);
 
   renderBreakdownRows("statusBreakdownBody", statusRows, "status", "count");
   renderBreakdownRows("sourceBreakdownBody", data.sourceBreakdown || [], "source", "count");

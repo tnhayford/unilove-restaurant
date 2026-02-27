@@ -1,18 +1,18 @@
 :root {
-  --bg-top: #fff6ea;
-  --bg-mid: #f8ead9;
-  --bg-bottom: #f3dfc8;
+  --bg-top: #f5fbff;
+  --bg-mid: #e9f4ff;
+  --bg-bottom: #dcecff;
   --panel: rgba(255, 255, 255, 0.94);
-  --line: #e1cfbf;
-  --text: #2b1d14;
-  --muted: #7c6658;
-  --brand: #d36c2b;
-  --brand-strong: #b5531f;
+  --line: #c8daed;
+  --text: #16324b;
+  --muted: #58728a;
+  --brand: #168ea8;
+  --brand-strong: #0f7288;
   --good: #1b8a56;
-  --warn: #96551a;
+  --warn: #9a670e;
   --bad: #b94450;
-  --shadow-lg: 0 28px 62px rgba(59, 33, 17, 0.16);
-  --shadow-md: 0 16px 34px rgba(59, 33, 17, 0.1);
+  --shadow-lg: 0 28px 62px rgba(19, 53, 86, 0.16);
+  --shadow-md: 0 16px 34px rgba(19, 53, 86, 0.1);
 }
 
 * {
@@ -80,7 +80,7 @@ body {
   border-radius: 24px;
   background:
     radial-gradient(circle at 84% 10%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 46%),
-    linear-gradient(140deg, #cf6326 0%, #bb4f1b 45%, #8f7e2f 100%);
+    linear-gradient(140deg, #168ea8 0%, #0f7288 46%, #3f9d7a 100%);
   color: #f4fdff;
   box-shadow: var(--shadow-lg);
 }

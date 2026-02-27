@@ -186,7 +186,7 @@ const adminInstoreOrderSchema = z.object({
   phone: phoneSchema,
   deliveryType: z.enum(["pickup", "delivery"]),
   address: z.string().trim().min(4).max(300).optional(),
-  paymentMethod: z.enum(["cash", "momo"]),
+  paymentMethod: z.enum(["cash", "momo", "cash_on_delivery"]),
   paymentChannel: z.enum(["mtn-gh", "vodafone-gh", "tigo-gh"]).optional(),
   items: z
     .array(
@@ -221,6 +221,14 @@ const adminInstoreOrderSchema = z.object({
       });
     }
   }
+
+  if (value.paymentMethod === "cash_on_delivery" && value.deliveryType !== "delivery") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "cash_on_delivery is only available for delivery orders",
+      path: ["paymentMethod"],
+    });
+  }
 });
 
 const adminMomoVerificationSchema = z.object({
@@ -237,12 +245,12 @@ const adminStaffCreateSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8).max(256),
-  role: z.enum(["admin", "staff"]).default("staff"),
+  role: z.enum(["admin", "manager", "cashier", "kitchen", "staff"]).default("staff"),
 });
 
 const adminStaffUpdateSchema = z.object({
   fullName: z.string().trim().min(2).max(120).optional(),
-  role: z.enum(["admin", "staff"]).optional(),
+  role: z.enum(["admin", "manager", "cashier", "kitchen", "staff"]).optional(),
   password: z.string().min(8).max(256).optional(),
 });
 
