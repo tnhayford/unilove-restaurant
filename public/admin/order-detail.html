@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order Detail</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Order management</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1 id="orderHeading">Order</h1>
+              <div id="orderMeta" class="meta"></div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="instore-layout">
+          <section class="panel">
+            <h3>Order Snapshot</h3>
+            <table class="detail-table">
+              <tbody id="orderSummary"></tbody>
+            </table>
+            <div id="loyaltySummary" class="loyalty-inline"></div>
+
+            <h3>Items</h3>
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Line Total</th>
+                  </tr>
+                </thead>
+                <tbody id="itemRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h3>Operational Actions</h3>
+            <div id="policyHint" class="helper" style="margin-bottom:8px;"></div>
+            <div id="actions" class="form-grid"></div>
+            <div id="statusText" class="helper" style="margin-top:8px;"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/orderDetail.js"></script>
+  </body>
+</html>

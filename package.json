@@ -1,0 +1,43 @@
+{
+  "name": "new-project",
+  "version": "1.0.0",
+  "description": "Restaurant MVP backend with USSD, Hubtel payment, delivery verification, loyalty, and analytics",
+  "main": "src/server.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "node scripts/migrate.js",
+    "seed:menu": "node scripts/seedMenu.js",
+    "seed:admin": "node scripts/seedAdmin.js",
+    "setup": "npm run migrate && npm run seed:menu && npm run seed:admin",
+    "backdate:sample": "node scripts/backdateSampleOrders.js",
+    "simulate:incoming": "node scripts/simulatePaidIncomingOrder.js",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "Codex",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.13.5",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "uuid": "^13.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "supertest": "^7.2.2",
+    "vitest": "^4.0.18"
+  }
+}

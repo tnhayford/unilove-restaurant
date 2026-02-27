@@ -1,0 +1,26 @@
+services:
+  unilove-app:
+    build: .
+    container_name: unilove-restaurant-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.unilove-http.rule=Host(`unilove.iderwell.com`)"
+      - "traefik.http.routers.unilove-http.entrypoints=web"
+      - "traefik.http.middlewares.unilove-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.unilove-http.middlewares=unilove-redirect"
+      - "traefik.http.routers.unilove.rule=Host(`unilove.iderwell.com`)"
+      - "traefik.http.routers.unilove.entrypoints=websecure"
+      - "traefik.http.routers.unilove.tls=true"
+      - "traefik.http.routers.unilove.tls.certresolver=letsencrypt"
+      - "traefik.http.services.unilove.loadbalancer.server.port=4000"
+
+networks:
+  proxy:
+    external: true

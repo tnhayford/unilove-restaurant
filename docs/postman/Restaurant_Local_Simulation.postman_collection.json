@@ -1,0 +1,460 @@
+{
+  "info": {
+    "_postman_id": "7a1b6eaf-f7f9-4976-b9d2-3cdd2a2894af",
+    "name": "Restaurant Local Simulation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "adminEmail", "value": "admin@restaurant.local" },
+    { "key": "adminPassword", "value": "ChangeMeNow123!" },
+    { "key": "hubtelCallbackSecret", "value": "replace_with_your_HUBTEL_CALLBACK_SECRET" },
+    { "key": "customerAName", "value": "Kwame Mensah" },
+    { "key": "customerAPhone", "value": "233540000111" },
+    { "key": "customerBName", "value": "Ama Boateng" },
+    { "key": "customerBPhone", "value": "233240000222" }
+  ],
+  "item": [
+    {
+      "name": "1. Init (Menu + Admin Login)",
+      "item": [
+        {
+          "name": "Get Public Menu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/menu"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Menu request succeeded', function () { pm.response.to.have.status(200); });",
+                  "const data = pm.response.json().data || [];",
+                  "pm.collectionVariables.set('itemA', data[0]?.id || '');",
+                  "pm.collectionVariables.set('itemB', data[6]?.id || data[0]?.id || '');",
+                  "pm.collectionVariables.set('itemC', data[12]?.id || data[0]?.id || '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Admin CSRF Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/auth/csrf-token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('CSRF token request succeeded', function () { pm.response.to.have.status(200); });",
+                  "const token = pm.response.json().csrfToken;",
+                  "pm.collectionVariables.set('csrfToken', token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin login succeeded', function () { pm.response.to.have.status(200); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Create 6 Orders (3 each for 2 customers)",
+      "item": [
+        {
+          "name": "Create Order A1 (Pickup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerAPhone}}\",\n  \"fullName\": \"{{customerAName}}\",\n  \"deliveryType\": \"pickup\",\n  \"items\": [\n    { \"itemId\": \"{{itemA}}\", \"quantity\": 2 },\n    { \"itemId\": \"{{itemB}}\", \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('orderA1Id', data.id);",
+                  "pm.collectionVariables.set('orderA1Ref', data.clientReference);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order B1 (Delivery)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerBPhone}}\",\n  \"fullName\": \"{{customerBName}}\",\n  \"deliveryType\": \"delivery\",\n  \"address\": \"Airport Residential Area\",\n  \"items\": [\n    { \"itemId\": \"{{itemB}}\", \"quantity\": 1 },\n    { \"itemId\": \"{{itemC}}\", \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('orderB1Id', data.id);",
+                  "pm.collectionVariables.set('orderB1Ref', data.clientReference);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order A2 (Pickup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerAPhone}}\",\n  \"fullName\": \"{{customerAName}}\",\n  \"deliveryType\": \"pickup\",\n  \"items\": [\n    { \"itemId\": \"{{itemC}}\", \"quantity\": 2 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('orderA2Id', data.id);",
+                  "pm.collectionVariables.set('orderA2Ref', data.clientReference);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order B2 (Pickup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerBPhone}}\",\n  \"fullName\": \"{{customerBName}}\",\n  \"deliveryType\": \"pickup\",\n  \"items\": [\n    { \"itemId\": \"{{itemA}}\", \"quantity\": 1 },\n    { \"itemId\": \"{{itemC}}\", \"quantity\": 1 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('orderB2Id', data.id);",
+                  "pm.collectionVariables.set('orderB2Ref', data.clientReference);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order A3 (Delivery)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerAPhone}}\",\n  \"fullName\": \"{{customerAName}}\",\n  \"deliveryType\": \"delivery\",\n  \"address\": \"East Legon\",\n  \"items\": [\n    { \"itemId\": \"{{itemB}}\", \"quantity\": 2 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('orderA3Id', data.id);",
+                  "pm.collectionVariables.set('orderA3Ref', data.clientReference);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Order B3 (Pickup)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{customerBPhone}}\",\n  \"fullName\": \"{{customerBName}}\",\n  \"deliveryType\": \"pickup\",\n  \"items\": [\n    { \"itemId\": \"{{itemA}}\", \"quantity\": 3 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const data = pm.response.json().data;",
+                  "pm.collectionVariables.set('orderB3Id', data.id);",
+                  "pm.collectionVariables.set('orderB3Ref', data.clientReference);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Simulate Paid Hubtel Callbacks",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const secret = pm.collectionVariables.get('hubtelCallbackSecret');",
+              "if (!secret || secret.startsWith('replace_')) {",
+              "  throw new Error('Set hubtelCallbackSecret in collection variables first.');",
+              "}",
+              "const raw = pm.request.body?.raw || '';",
+              "const resolved = pm.variables.replaceIn(raw);",
+              "const signature = CryptoJS.HmacSHA256(resolved, secret).toString(CryptoJS.enc.Hex);",
+              "pm.collectionVariables.set('hubtelSignature', signature);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Callback A1 Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-hubtel-signature", "value": "{{hubtelSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ResponseCode\": \"0000\",\n  \"Message\": \"success\",\n  \"Data\": {\n    \"ClientReference\": \"{{orderA1Ref}}\",\n    \"TransactionId\": \"txn-{{orderA1Ref}}\",\n    \"ExternalTransactionId\": \"ext-{{orderA1Ref}}\",\n    \"Amount\": 120.00,\n    \"Charges\": 2.00,\n    \"AmountAfterCharges\": 118.00,\n    \"AmountCharged\": 120.00\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/hubtel/callback"
+          }
+        },
+        {
+          "name": "Callback B1 Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-hubtel-signature", "value": "{{hubtelSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ResponseCode\": \"0000\",\n  \"Message\": \"success\",\n  \"Data\": {\n    \"ClientReference\": \"{{orderB1Ref}}\",\n    \"TransactionId\": \"txn-{{orderB1Ref}}\",\n    \"ExternalTransactionId\": \"ext-{{orderB1Ref}}\",\n    \"Amount\": 95.00,\n    \"Charges\": 1.90,\n    \"AmountAfterCharges\": 93.10,\n    \"AmountCharged\": 95.00\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/hubtel/callback"
+          }
+        },
+        {
+          "name": "Callback A2 Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-hubtel-signature", "value": "{{hubtelSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ResponseCode\": \"0000\",\n  \"Message\": \"success\",\n  \"Data\": {\n    \"ClientReference\": \"{{orderA2Ref}}\",\n    \"TransactionId\": \"txn-{{orderA2Ref}}\",\n    \"ExternalTransactionId\": \"ext-{{orderA2Ref}}\",\n    \"Amount\": 90.00,\n    \"Charges\": 1.80,\n    \"AmountAfterCharges\": 88.20,\n    \"AmountCharged\": 90.00\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/hubtel/callback"
+          }
+        },
+        {
+          "name": "Callback B2 Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-hubtel-signature", "value": "{{hubtelSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ResponseCode\": \"0000\",\n  \"Message\": \"success\",\n  \"Data\": {\n    \"ClientReference\": \"{{orderB2Ref}}\",\n    \"TransactionId\": \"txn-{{orderB2Ref}}\",\n    \"ExternalTransactionId\": \"ext-{{orderB2Ref}}\",\n    \"Amount\": 80.00,\n    \"Charges\": 1.60,\n    \"AmountAfterCharges\": 78.40,\n    \"AmountCharged\": 80.00\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/hubtel/callback"
+          }
+        },
+        {
+          "name": "Callback A3 Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-hubtel-signature", "value": "{{hubtelSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ResponseCode\": \"0000\",\n  \"Message\": \"success\",\n  \"Data\": {\n    \"ClientReference\": \"{{orderA3Ref}}\",\n    \"TransactionId\": \"txn-{{orderA3Ref}}\",\n    \"ExternalTransactionId\": \"ext-{{orderA3Ref}}\",\n    \"Amount\": 70.00,\n    \"Charges\": 1.40,\n    \"AmountAfterCharges\": 68.60,\n    \"AmountCharged\": 70.00\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/hubtel/callback"
+          }
+        },
+        {
+          "name": "Callback B3 Paid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-hubtel-signature", "value": "{{hubtelSignature}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ResponseCode\": \"0000\",\n  \"Message\": \"success\",\n  \"Data\": {\n    \"ClientReference\": \"{{orderB3Ref}}\",\n    \"TransactionId\": \"txn-{{orderB3Ref}}\",\n    \"ExternalTransactionId\": \"ext-{{orderB3Ref}}\",\n    \"Amount\": 130.00,\n    \"Charges\": 2.60,\n    \"AmountAfterCharges\": 127.40,\n    \"AmountCharged\": 130.00\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/payments/hubtel/callback"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Move Some Orders in Operations",
+      "item": [
+        {
+          "name": "A1 -> PREPARING",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/orders/{{orderA1Id}}/status"
+          }
+        },
+        {
+          "name": "A1 -> READY_FOR_PICKUP",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READY_FOR_PICKUP\"\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/orders/{{orderA1Id}}/status"
+          }
+        },
+        {
+          "name": "B1 -> PREPARING",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/orders/{{orderB1Id}}/status"
+          }
+        },
+        {
+          "name": "B1 -> OUT_FOR_DELIVERY",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-csrf-token", "value": "{{csrfToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"OUT_FOR_DELIVERY\"\n}"
+            },
+            "url": "{{baseUrl}}/api/admin/orders/{{orderB1Id}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Verify Results",
+      "item": [
+        {
+          "name": "List Admin Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/orders"
+          }
+        },
+        {
+          "name": "Get Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/analytics"
+          }
+        }
+      ]
+    }
+  ]
+}

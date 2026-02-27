@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SLA Health</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">SLA breach tracking</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>SLA Health</h1>
+              <div class="meta">Orders breaching pending payment, kitchen, and delivery SLA targets.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="kpis">
+          <article class="kpi-card accent-amber"><div class="label">Pending SLA</div><div class="value" id="pendingSla">0m</div></article>
+          <article class="kpi-card accent-warm"><div class="label">Kitchen SLA</div><div class="value" id="kitchenSla">0m</div></article>
+          <article class="kpi-card accent-coral"><div class="label">Delivery SLA</div><div class="value" id="deliverySla">0m</div></article>
+          <article class="kpi-card accent-coral"><div class="label">Breached Orders</div><div class="value" id="breachCount">0</div></article>
+        </section>
+
+        <section class="panel">
+          <div class="filters">
+            <div><label>Search</label><input id="searchInput" class="input" placeholder="order/customer/phone" /></div>
+          </div>
+          <div id="statusText" class="helper" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Status</th>
+                <th>Age</th>
+                <th>SLA Target</th>
+                <th>Overrun</th>
+                <th>Source</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="slaBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="paginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="prevBtn" class="btn">Prev</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextBtn" class="btn">Next</button>
+          </div>
+          <form id="pageJumpForm" class="pagination-jump">
+            <label for="pageInput">Go to page</label>
+            <input id="pageInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/sla.js"></script>
+  </body>
+</html>

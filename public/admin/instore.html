@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>In-Store Orders</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Walk-in order capture</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel instore-main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>In-Store POS</h1>
+              <div class="meta">Fast cashier flow for walk-in orders.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="instore-layout wide">
+          <section class="panel accent-mint instore-menu-column">
+            <div class="instore-menu-head">
+              <h3 style="margin:0;">Menu</h3>
+              <div class="instore-menu-stats" aria-live="polite">
+                <div class="instore-stat-chip">
+                  <span>Active Items</span>
+                  <strong id="menuActiveCount">0</strong>
+                </div>
+                <div class="instore-stat-chip">
+                  <span>Categories</span>
+                  <strong id="menuCategoryCount">0</strong>
+                </div>
+                <div class="instore-stat-chip">
+                  <span>Showing</span>
+                  <strong id="menuVisibleCount">0</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="instore-menu-toolbar">
+              <div class="menu-search-field">
+                <label for="menuSearch">Search menu item</label>
+                <input id="menuSearch" class="input" placeholder="Search item name" />
+              </div>
+              <button id="reloadMenuBtn" class="btn">Reload Menu</button>
+            </div>
+
+            <div class="instore-category-row">
+              <div class="instore-category-head">
+                <span>Categories</span>
+                <span id="selectedCategoryHint" class="order-meta">All categories</span>
+              </div>
+              <div id="categoryButtons" class="category-buttons"></div>
+            </div>
+
+            <div class="instore-menu-pager">
+              <span id="menuRangeLabel" class="order-meta">Items 0-0 of 0</span>
+              <div class="pager-controls">
+                <button id="menuPrevBtn" type="button" class="btn">Prev</button>
+                <span id="menuPageLabel" class="order-meta">Page 1/1</span>
+                <button id="menuNextBtn" type="button" class="btn">Next</button>
+              </div>
+            </div>
+
+            <div class="menu-grid-wrap">
+              <div id="menuGrid" class="menu-card-grid"></div>
+            </div>
+          </section>
+
+          <section class="panel accent-lilac cart-panel instore-cart-column">
+            <form id="checkoutForm" class="form-grid instore-checkout-form">
+              <div class="cart-panel-head">
+                <h3 style="margin:0;">Checkout</h3>
+              </div>
+
+              <div class="cart-quick-stats" aria-live="polite">
+                <span>Lines <strong id="cartLineCount">0</strong></span>
+                <span>Qty <strong id="cartQtyCount">0</strong></span>
+                <span>Total <strong id="cartTotalInline">GHS 0.00</strong></span>
+              </div>
+
+              <div id="cartList" class="cart-list"></div>
+
+              <div class="cart-total-bar">
+                <span>Total</span>
+                <strong id="cartTotal">GHS 0.00</strong>
+              </div>
+
+              <section class="checkout-section">
+                <h4>Customer</h4>
+                <div class="checkout-fields">
+                  <div class="checkout-field">
+                    <label>Customer Name</label>
+                    <input id="customerName" class="input" placeholder="Enter customer name" required />
+                  </div>
+                  <div class="checkout-field">
+                    <label>Customer Phone</label>
+                    <input id="customerPhone" class="input" placeholder="0200000000" list="customerPhoneSuggestions" required />
+                    <datalist id="customerPhoneSuggestions"></datalist>
+                  </div>
+
+                  <div class="checkout-field">
+                    <label>Delivery Type</label>
+                    <div class="delivery-toggle-group">
+                      <button type="button" class="btn primary" id="pickupBtn">Pickup</button>
+                      <button type="button" class="btn" id="deliveryBtn">Delivery</button>
+                    </div>
+                    <input type="hidden" id="deliveryType" value="pickup" />
+                  </div>
+
+                  <div id="addressWrap" class="checkout-field checkout-field-wide" style="display:none;">
+                    <label>Delivery Address</label>
+                    <textarea id="deliveryAddress" class="textarea" placeholder="Enter delivery address"></textarea>
+                  </div>
+                </div>
+              </section>
+
+              <section class="checkout-section">
+                <h4>Payment</h4>
+                <div class="checkout-fields checkout-fields-payment">
+                  <div class="checkout-field">
+                    <label>Payment Method</label>
+                    <select id="paymentMethod" class="select">
+                      <option value="cash">Cash</option>
+                      <option value="momo">MoMo (Hubtel)</option>
+                    </select>
+                  </div>
+
+                  <div id="momoChannelWrap" class="checkout-field" style="display:none;">
+                    <label>MoMo Network</label>
+                    <select id="paymentChannel" class="select">
+                      <option value="mtn-gh">MTN (mtn-gh)</option>
+                      <option value="vodafone-gh">Telecel (vodafone-gh)</option>
+                      <option value="tigo-gh">AirtelTigo (tigo-gh)</option>
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <div class="checkout-primary-row">
+                <button id="checkoutActionBtn" type="submit" class="btn primary">Create Order</button>
+              </div>
+
+              <section class="checkout-status-stack">
+                <div id="verifiedCustomerBanner" class="inline-verify helper" style="display:none;"></div>
+                <div id="actionFeedback" class="inline-feedback helper">Ready.</div>
+                <div id="instoreResult" class="instore-result helper">Ready to create order.</div>
+              </section>
+
+              <details class="instore-live-monitor">
+                <summary class="instore-live-summary">
+                  <span>Live MoMo Prompt Tracker</span>
+                  <span id="paymentMonitorMeta" class="order-meta">Pending 0 | Confirmed 0 | Failed 0</span>
+                </summary>
+                <div class="instore-live-head">
+                  <h4 style="margin:0;">Pending and Failed Prompts</h4>
+                  <div class="instore-live-actions">
+                    <button id="clearPaidMonitorsBtn" type="button" class="btn payment-btn-clear">Clear Completed</button>
+                  </div>
+                </div>
+                <div id="paymentMonitorList" class="payment-monitor-list">
+                  <div class="payment-monitor-empty">No live payment prompts yet.</div>
+                </div>
+              </details>
+
+              <section class="instore-utility-strip">
+                <div class="instore-queue-chip">Offline Queue: <strong id="offlineQueueCount">0</strong></div>
+                <button id="syncOfflineQueueBtn" class="btn">Sync Queue</button>
+                <div id="statusText" class="helper"></div>
+              </section>
+            </form>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/instore.js"></script>
+  </body>
+</html>

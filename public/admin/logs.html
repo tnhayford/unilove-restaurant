@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Logs</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Operational Logs</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>System Logs</h1>
+              <div class="meta">Security, money, SMS, and runtime error logs.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <div class="filters">
+            <div>
+              <label>Log Type</label>
+              <select id="logTypeFilter" class="select">
+                <option value="all">All Logs</option>
+                <option value="security">Security Logs</option>
+                <option value="money">Money Logs</option>
+                <option value="sms">SMS Logs</option>
+                <option value="errors">Error Logs</option>
+              </select>
+            </div>
+            <div>
+              <label>Security Action</label>
+              <select id="securityActionFilter" class="select">
+                <option value="">All Security Actions</option>
+                <option value="ADMIN_LOGIN_SUCCESS">Admin Login Success</option>
+                <option value="ADMIN_LOGIN_FAILED">Admin Login Failed</option>
+                <option value="ADMIN_LOGOUT">Admin Logout</option>
+                <option value="ADMIN_USER_CREATED">Staff/Admin Created</option>
+                <option value="ADMIN_USER_UPDATED">Staff/Admin Updated</option>
+                <option value="ADMIN_USER_DELETED">Staff/Admin Deleted</option>
+                <option value="ADMIN_USER_PERMISSIONS_UPDATED">Staff Permissions Updated</option>
+                <option value="ADMIN_USER_PERMISSIONS_UPDATE_REQUESTED">Staff Permissions Update Requested</option>
+                <option value="ADMIN_USER_PERMISSIONS_NORMALIZED">Staff Permissions Normalized</option>
+                <option value="ADMIN_USER_PERMISSIONS_UPDATE_FAILED">Staff Permissions Update Failed</option>
+                <option value="ADMIN_USER_PERMISSIONS_VIEWED">Staff Permissions Viewed</option>
+                <option value="ADMIN_UI_BUTTON_CLICK">UI Button Click</option>
+                <option value="ORDER_CREATED">Order Created</option>
+                <option value="INSTORE_ORDER_CREATED">In-Store Order Created</option>
+                <option value="ORDER_STATUS_CHANGED">Order Status Changed</option>
+                <option value="ORDER_CANCELED">Order Canceled</option>
+                <option value="ORDER_MONITORED">Order Monitored</option>
+                <option value="MENU_ITEM_CREATED">Menu Item Created</option>
+                <option value="MENU_ITEM_UPDATED">Menu Item Updated</option>
+                <option value="MENU_ITEM_DELETED">Menu Item Deleted</option>
+                <option value="MENU_ITEM_AVAILABILITY_CHANGED">Menu Availability Changed</option>
+                <option value="MENU_CATEGORY_CREATED">Menu Category Created</option>
+                <option value="MENU_CATEGORY_RENAMED">Menu Category Renamed</option>
+                <option value="MENU_CATEGORY_DELETED">Menu Category Deleted</option>
+                <option value="STORE_STATUS_UPDATED">Store Status Updated</option>
+                <option value="SLA_CONFIG_UPDATED">SLA Config Updated</option>
+                <option value="RIDER_LOGIN_SUCCESS">Rider Login Success</option>
+                <option value="RIDER_SHIFT_ONLINE">Rider Shift Online</option>
+                <option value="RIDER_SHIFT_OFFLINE">Rider Shift Offline</option>
+                <option value="RIDER_DEVICE_TOKEN_REGISTERED">Rider Device Token Registered</option>
+                <option value="RIDER_LOGOUT">Rider Logout</option>
+                <option value="ORDER_RIDER_ASSIGNED_MANUAL">Order Rider Assigned (Manual)</option>
+                <option value="INCIDENT_CREATED">Incident Created</option>
+                <option value="INCIDENT_UPDATED">Incident Updated</option>
+                <option value="DISPUTE_CREATED">Dispute Created</option>
+                <option value="DISPUTE_UPDATED">Dispute Updated</option>
+                <option value="REPORT_GENERATED">Report Generated</option>
+                <option value="SLA_BREACH_ALERT_SENT">SLA Alert Sent</option>
+              </select>
+            </div>
+            <div>
+              <label>Search</label>
+              <input id="searchInput" class="input" placeholder="Search phone, order, action, message..." />
+            </div>
+            <div style="display:flex; align-items:end; gap:8px;">
+              <button id="refreshBtn" class="btn">Refresh</button>
+            </div>
+          </div>
+          <div id="statusText" class="helper" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table" id="logsTable">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Type</th>
+                <th>Summary</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="logsBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="paginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="prevPageBtn" class="btn">Prev</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextPageBtn" class="btn">Next</button>
+          </div>
+          <form id="pageJumpForm" class="pagination-jump">
+            <label for="pageJumpInput">Go to page</label>
+            <input id="pageJumpInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/logs.js"></script>
+  </body>
+</html>

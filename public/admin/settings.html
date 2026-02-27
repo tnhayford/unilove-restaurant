@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Settings</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Configuration</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Settings</h1>
+              <div class="meta">Alert sounds, volume, and dashboard refresh behavior.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Store Availability</h3>
+          <div class="filters">
+            <div>
+              <label>Order Intake Status</label>
+              <select id="storeOpenStatus" class="select">
+                <option value="true">Open (accept orders)</option>
+                <option value="false">Closed (block new orders)</option>
+              </select>
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <label>Closure Message (shown on API and USSD when closed)</label>
+              <input
+                id="storeClosureMessage"
+                class="input"
+                maxlength="240"
+                placeholder="Unilove Foods is currently closed for new orders. Please try again later."
+              />
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+            <button id="saveStoreStatusBtn" class="btn primary">Save Store Status</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">SLA Thresholds (minutes)</h3>
+          <div class="filters">
+            <div>
+              <label>Pending Payment SLA</label>
+              <input id="slaPendingMinutes" class="input" type="number" min="1" max="240" />
+            </div>
+            <div>
+              <label>Kitchen SLA</label>
+              <input id="slaKitchenMinutes" class="input" type="number" min="1" max="240" />
+            </div>
+            <div>
+              <label>Delivery SLA</label>
+              <input id="slaDeliveryMinutes" class="input" type="number" min="1" max="240" />
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+            <button id="saveSlaSettingsBtn" class="btn primary">Save SLA</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Order SMS and Guest Riders</h3>
+          <div class="filters">
+            <div>
+              <label>Order Tracking SMS</label>
+              <select id="smsOrderTrackingEnabled" class="select">
+                <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
+              </select>
+            </div>
+            <div>
+              <label>Order Completion + Receipt SMS</label>
+              <select id="smsOrderCompletionEnabled" class="select">
+                <option value="true">Enabled</option>
+                <option value="false">Disabled</option>
+              </select>
+            </div>
+            <div>
+              <label>Delivery OTP SMS</label>
+              <select id="smsDeliveryOtpEnabled" class="select">
+                <option value="false">Disabled</option>
+                <option value="true">Enabled</option>
+              </select>
+            </div>
+            <div>
+              <label>Guest Rider Login</label>
+              <select id="riderGuestLoginPolicy" class="select">
+                <option value="open">Open</option>
+                <option value="invite_only">Invite only (code)</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </div>
+            <div>
+              <label>Guest Access Code (optional)</label>
+              <input id="riderGuestAccessCode" class="input" maxlength="64" placeholder="Set code for invite-only mode" />
+            </div>
+            <div>
+              <label>Guest Commission (%)</label>
+              <input id="riderGuestCommissionPercent" class="input" type="number" min="0" max="100" step="0.1" />
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+            <button id="saveOpsPolicyBtn" class="btn primary">Save Operations Policy</button>
+          </div>
+          <div class="helper" style="margin-top:10px;">
+            Recommended: keep only tracking + completion SMS enabled, and keep OTP SMS off unless strictly needed.
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Alert Sound</h3>
+          <div class="filters">
+            <div>
+              <label>Sound Type</label>
+              <select id="alertTone" class="select">
+                <option value="rapid_chime">Rapid Chime</option>
+                <option value="driver_ping">Driver Ping</option>
+                <option value="digital_bell">Digital Bell</option>
+                <option value="kitchen_bell">Kitchen Bell</option>
+                <option value="siren_soft">Soft Siren</option>
+                <option value="cashier_ping">Cashier Ping</option>
+                <option value="triple_beep">Triple Beep</option>
+                <option value="gong_short">Short Gong</option>
+                <option value="uber_ping_classic">Uber Ping Classic</option>
+                <option value="uber_ping_double">Uber Ping Double</option>
+                <option value="uber_ping_triple">Uber Ping Triple</option>
+                <option value="dispatch_pop">Dispatch Pop</option>
+                <option value="priority_nudge">Priority Nudge</option>
+                <option value="neon_tick">Neon Tick</option>
+                <option value="metro_ping">Metro Ping</option>
+                <option value="sonar_blip">Sonar Blip</option>
+                <option value="prison_siren">Prison Siren</option>
+                <option value="door_lock">Door Lock</option>
+                <option value="prison_breach">Prison Breach</option>
+                <option value="large_chapel_bell">Large Chapel Bell</option>
+                <option value="pantry_bell">Pantry Bell</option>
+              </select>
+            </div>
+            <div>
+              <label>Volume</label>
+              <input id="alertVolume" class="input" type="range" min="0" max="1" step="0.05" />
+              <div class="meta"><span id="alertVolumeValue">0</span>%</div>
+            </div>
+            <div>
+              <label>Repeat Interval (ms)</label>
+              <input id="alertIntervalMs" class="input" type="number" min="700" max="5000" step="100" />
+            </div>
+            <div>
+              <label>Enabled</label>
+              <select id="alertEnabled" class="select">
+                <option value="true">Enabled</option>
+                <option value="false">Muted</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+            <button id="playPreviewBtn" class="btn">Play Preview</button>
+            <button id="saveSettingsBtn" class="btn primary">Save Settings</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Operations Refresh</h3>
+          <div class="filters">
+            <div>
+              <label>Auto Refresh Interval (ms)</label>
+              <input id="autoRefreshMs" class="input" type="number" min="3000" max="120000" step="500" />
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+            <button id="saveRefreshBtn" class="btn primary">Apply Refresh Interval</button>
+          </div>
+          <div id="statusText" class="helper" style="margin-top:10px;"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/settings.js"></script>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "sampleMeta": {
+    "source": "payments.raw_payload",
+    "observedAt": "2026-02-23 09:25:40",
+    "orderClientReference": "instore-1771838736378-2u5j4d",
+    "statusPersisted": "FAILED",
+    "redacted": false,
+    "signatureMode": "hmac-sha256-hex",
+    "signatureBodyEncoding": "JSON.stringify(body)"
+  },
+  "headers": {
+    "x-hubtel-signature": "61630afa58d41e344d9cf4042168f32d0e82a759e38a93a53dca2d782afad0dd"
+  },
+  "body": {
+    "ResponseCode": "2001",
+    "Message": "failed",
+    "Data": {
+      "Amount": 0.03,
+      "Charges": 0.01,
+      "AmountAfterCharges": 0.02,
+      "Description": "The MTN Mobile Money user has reached counter or balance limits, has insufficient funds or is missing permissions",
+      "ClientReference": "instore-1771838736378-2u5j4d",
+      "TransactionId": "89ee61ceda7247b08374ce8756f1b62d",
+      "ExternalTransactionId": "",
+      "AmountCharged": 0.03,
+      "OrderId": "89ee61ceda7247b08374ce8756f1b62d",
+      "PaymentDate": "2026-02-23T09:25:39.3384375Z"
+    }
+  },
+  "headersSha256Prefixed": {
+    "x-hubtel-signature": "sha256=61630afa58d41e344d9cf4042168f32d0e82a759e38a93a53dca2d782afad0dd"
+  },
+  "altAcceptedHeaderKeys": [
+    "x-signature",
+    "signature",
+    "x-callback-signature"
+  ]
+}

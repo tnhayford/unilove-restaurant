@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Loyalty Ops</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Loyalty operations</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Loyalty Operations</h1>
+              <div class="meta">Monitor points issuance, reversals, and reversal risk by channel and date.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshLoyaltyBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <div class="filters">
+            <div>
+              <label>Search</label>
+              <input id="loyaltySearchText" class="input" placeholder="Order no, phone, or customer name" />
+            </div>
+            <div>
+              <label>Reason</label>
+              <select id="loyaltyReason" class="select">
+                <option value="">All Reasons</option>
+                <option value="PAYMENT_CONFIRMED">Payment Confirmed</option>
+                <option value="RETURNED">Returned</option>
+                <option value="REFUNDED">Refunded</option>
+              </select>
+            </div>
+            <div>
+              <label>Source</label>
+              <select id="loyaltySource" class="select">
+                <option value="">All Sources</option>
+                <option value="online">Online</option>
+                <option value="ussd">USSD</option>
+                <option value="instore">In-Store</option>
+              </select>
+            </div>
+            <div>
+              <label>Delivery Type</label>
+              <select id="loyaltyDeliveryType" class="select">
+                <option value="">All Types</option>
+                <option value="pickup">Pickup</option>
+                <option value="delivery">Delivery</option>
+              </select>
+            </div>
+            <div>
+              <label>Start Date</label>
+              <input id="loyaltyStartDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>End Date</label>
+              <input id="loyaltyEndDate" class="input" type="date" />
+            </div>
+            <div style="display:flex; align-items:end; gap:8px;">
+              <button id="applyFiltersBtn" class="btn primary" type="button">Apply Filters</button>
+              <button id="resetFiltersBtn" class="btn" type="button">Reset</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="kpis">
+          <article class="kpi-card accent-mint">
+            <div class="label">Issued Points</div>
+            <div class="value" id="issuedPointsValue">0</div>
+          </article>
+          <article class="kpi-card accent-coral">
+            <div class="label">Reversed Points</div>
+            <div class="value" id="reversedPointsValue">0</div>
+          </article>
+          <article class="kpi-card accent-sky">
+            <div class="label">Net Points</div>
+            <div class="value" id="netPointsValue">0</div>
+          </article>
+          <article class="kpi-card accent-amber">
+            <div class="label">Reversal Rate</div>
+            <div class="value" id="reversalRateValue">0%</div>
+          </article>
+          <article class="kpi-card accent-warm">
+            <div class="label">Rewarded Orders</div>
+            <div class="value" id="rewardedOrdersValue">0</div>
+          </article>
+          <article class="kpi-card accent-lilac">
+            <div class="label">Reversed Orders</div>
+            <div class="value" id="reversedOrdersValue">0</div>
+          </article>
+        </section>
+
+        <section class="panel table-wrap">
+          <h3 style="margin-top:0;">Loyalty Ledger</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Source</th>
+                <th>Delivery</th>
+                <th>Reason</th>
+                <th>Points</th>
+              </tr>
+            </thead>
+            <tbody id="loyaltyLedgerBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="loyaltyPaginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="loyaltyPrevBtn" class="btn">Prev</button>
+            <div id="loyaltyPageNumbers" class="page-numbers"></div>
+            <button id="loyaltyNextBtn" class="btn">Next</button>
+          </div>
+          <form id="loyaltyPageJumpForm" class="pagination-jump">
+            <label for="loyaltyPageInput">Go to page</label>
+            <input id="loyaltyPageInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+          <div id="statusText" class="helper"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/loyalty.js"></script>
+  </body>
+</html>

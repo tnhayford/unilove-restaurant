@@ -1,0 +1,20 @@
+flowchart LR
+    IN[Inbound request] --> RL[Rate Limiting]
+    RL --> HEL[Helmet headers]
+    HEL --> VAL[Input Validation]
+    VAL --> CTL[Thin Controller]
+    CTL --> SVC[Service Layer Logic]
+    SVC --> DB[(Database)]
+
+    HUB[Hubtel callback] --> SIG[Signature Verification]
+    SIG --> VAL
+
+    ADM[Admin action] --> JWT[JWT in HttpOnly cookie]
+    JWT --> CSRF[CSRF validation]
+    CSRF --> CTL
+
+    SVC --> AUD[Audit log sensitive action]
+    AUD --> DB
+
+    CODE[Delivery code] --> HASH[Hash before persistence]
+    HASH --> DB

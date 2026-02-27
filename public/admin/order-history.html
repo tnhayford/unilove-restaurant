@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order History</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Historical order insights</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Order History</h1>
+              <div class="meta">Filter by period, source, type, status, delays, and payment issues.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <div class="filters">
+            <div>
+              <label>Search</label>
+              <input id="historySearch" class="input" placeholder="Order/customer/phone" />
+            </div>
+            <div>
+              <label>Start Date</label>
+              <input id="historyStartDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>End Date</label>
+              <input id="historyEndDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>Source</label>
+              <select id="historySource" class="select">
+                <option value="">All Sources</option>
+                <option value="online">Online</option>
+                <option value="ussd">USSD</option>
+                <option value="instore">In-Store</option>
+              </select>
+            </div>
+            <div>
+              <label>Delivery Type</label>
+              <select id="historyDeliveryType" class="select">
+                <option value="">All Types</option>
+                <option value="pickup">Pickup</option>
+                <option value="delivery">Delivery</option>
+              </select>
+            </div>
+            <div>
+              <label>Status</label>
+              <select id="historyStatus" class="select">
+                <option value="">All Statuses</option>
+                <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
+                <option value="PAYMENT_FAILED">PAYMENT_FAILED</option>
+                <option value="PAID">PAID</option>
+                <option value="PREPARING">PREPARING</option>
+                <option value="READY_FOR_PICKUP">READY_FOR_PICKUP</option>
+                <option value="OUT_FOR_DELIVERY">OUT_FOR_DELIVERY</option>
+                <option value="DELIVERED">DELIVERED</option>
+                <option value="RETURNED">RETURNED</option>
+                <option value="REFUNDED">REFUNDED</option>
+                <option value="CANCELED">CANCELED</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;">
+            <label class="checkbox-label">
+              <input id="historyDelayedOnly" type="checkbox" />
+              Delayed only (>30m)
+            </label>
+            <label class="checkbox-label">
+              <input id="historyPaymentIssuesOnly" type="checkbox" />
+              Payment issues only
+            </label>
+            <button id="historyRefreshBtn" class="btn">Refresh</button>
+            <button id="reconcileBtn" class="btn primary">Reconcile Pending Payments</button>
+            <div class="meta">Total: <strong id="historyTotal">0</strong></div>
+          </div>
+          <div id="statusText" class="helper" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Source</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Age</th>
+                <th>Total</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="historyPaginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="historyPrevBtn" class="btn">Prev</button>
+            <div id="historyPageNumbers" class="page-numbers"></div>
+            <button id="historyNextBtn" class="btn">Next</button>
+          </div>
+          <form id="historyPageJumpForm" class="pagination-jump">
+            <label for="historyPageInput">Go to page</label>
+            <input id="historyPageInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/orderHistory.js"></script>
+  </body>
+</html>

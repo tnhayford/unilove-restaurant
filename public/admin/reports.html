@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reports</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Reports and exports</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Reports & Exports</h1>
+              <div class="meta">Generate downloadable orders and customer database reports in PDF, Excel (CSV), or JSON.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Generate Report</h3>
+          <form id="reportForm" class="filters">
+            <div>
+              <label>Report Type</label>
+              <select id="reportType" class="select">
+                <option value="orders">Orders</option>
+                <option value="customers">Customers Database</option>
+              </select>
+            </div>
+            <div>
+              <label>Format</label>
+              <select id="reportFormat" class="select">
+                <option value="pdf">PDF</option>
+                <option value="excel">Excel (CSV)</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+            <div>
+              <label>Start Date</label>
+              <input id="reportStartDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>End Date</label>
+              <input id="reportEndDate" class="input" type="date" />
+            </div>
+            <div class="staff-form-action">
+              <button type="submit" class="btn primary">Generate</button>
+            </div>
+          </form>
+          <div id="statusText" class="helper" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Report Schedules</h3>
+          <form id="scheduleForm" class="filters">
+            <div>
+              <label>Type</label>
+              <select id="scheduleType" class="select">
+                <option value="orders">Orders</option>
+                <option value="customers">Customers Database</option>
+              </select>
+            </div>
+            <div>
+              <label>Format</label>
+              <select id="scheduleFormat" class="select">
+                <option value="pdf">PDF</option>
+                <option value="excel">Excel (CSV)</option>
+                <option value="json">JSON</option>
+              </select>
+            </div>
+            <div>
+              <label>Frequency</label>
+              <select id="scheduleFrequency" class="select">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div id="scheduleDayWrap" style="display:none;">
+              <label>Day (UTC)</label>
+              <select id="scheduleDayOfWeek" class="select">
+                <option value="0">Sunday</option>
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+              </select>
+            </div>
+            <div>
+              <label>Hour (UTC)</label>
+              <input id="scheduleHourUtc" class="input" type="number" min="0" max="23" value="2" />
+            </div>
+            <div>
+              <label>Minute (UTC)</label>
+              <input id="scheduleMinuteUtc" class="input" type="number" min="0" max="59" value="0" />
+            </div>
+            <div>
+              <label>Start Date</label>
+              <input id="scheduleStartDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>End Date</label>
+              <input id="scheduleEndDate" class="input" type="date" />
+            </div>
+            <div class="staff-form-action">
+              <button type="submit" class="btn primary">Create Schedule</button>
+            </div>
+          </form>
+
+          <div class="table-wrap" style="margin-top:14px;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Format</th>
+                  <th>Frequency</th>
+                  <th>Run Time (UTC)</th>
+                  <th>Next Run</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="scheduleBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Requested</th>
+                <th>Type</th>
+                <th>Format</th>
+                <th>Status</th>
+                <th>Requested By</th>
+                <th>Completed</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="reportBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="paginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="prevBtn" class="btn">Prev</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextBtn" class="btn">Next</button>
+          </div>
+          <form id="pageJumpForm" class="pagination-jump">
+            <label for="pageInput">Go to page</label>
+            <input id="pageInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/reports.js"></script>
+  </body>
+</html>

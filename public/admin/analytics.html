@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Performance insights</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Analytics</h1>
+              <div class="meta">Filtered performance, operations health, delivery reliability, and loyalty trends.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshAnalyticsBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <div class="filters">
+            <div>
+              <label>Start Date</label>
+              <input id="analyticsStartDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>End Date</label>
+              <input id="analyticsEndDate" class="input" type="date" />
+            </div>
+            <div>
+              <label>Source</label>
+              <select id="analyticsSource" class="select">
+                <option value="">All Sources</option>
+                <option value="online">Online</option>
+                <option value="ussd">USSD</option>
+                <option value="instore">In-Store</option>
+              </select>
+            </div>
+            <div>
+              <label>Delivery Type</label>
+              <select id="analyticsDeliveryType" class="select">
+                <option value="">All Types</option>
+                <option value="pickup">Pickup</option>
+                <option value="delivery">Delivery</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="kpis">
+          <article class="kpi-card accent-sky">
+            <div class="label">Total Orders</div>
+            <div class="value" id="totalOrdersValue">0</div>
+          </article>
+          <article class="kpi-card accent-mint">
+            <div class="label">Completed Orders</div>
+            <div class="value" id="completedOrdersValue">0</div>
+          </article>
+          <article class="kpi-card accent-warm">
+            <div class="label">Average Order Value</div>
+            <div class="value" id="aovValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-lilac">
+            <div class="label">Delivery Success Rate</div>
+            <div class="value" id="deliveryRateValue">0%</div>
+          </article>
+          <article class="kpi-card accent-warm">
+            <div class="label">Daily Revenue (31d)</div>
+            <div class="value" id="dailyTotalValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-sky">
+            <div class="label">Loyalty Issued (31d)</div>
+            <div class="value" id="loyaltyTotalValue">0</div>
+          </article>
+          <article class="kpi-card accent-coral">
+            <div class="label">Delayed Orders (>30m)</div>
+            <div class="value" id="delayedCountValue">0</div>
+          </article>
+          <article class="kpi-card accent-amber">
+            <div class="label">Payment Issues</div>
+            <div class="value" id="paymentIssueValue">0</div>
+          </article>
+          <article class="kpi-card accent-coral">
+            <div class="label">Exception Rate</div>
+            <div class="value" id="exceptionRateValue">0%</div>
+          </article>
+          <article class="kpi-card accent-amber">
+            <div class="label">Loyalty / Order</div>
+            <div class="value" id="loyaltyPerOrderValue">0.00</div>
+          </article>
+          <article class="kpi-card accent-coral">
+            <div class="label">Cancellation Rate</div>
+            <div class="value" id="cancelRateValue">0%</div>
+          </article>
+          <article class="kpi-card accent-amber">
+            <div class="label">Refund Rate</div>
+            <div class="value" id="refundRateValue">0%</div>
+          </article>
+          <article class="kpi-card accent-sky">
+            <div class="label">Payment Conversion</div>
+            <div class="value" id="paymentConversionValue">0%</div>
+          </article>
+        </section>
+
+        <section class="analytics-main-grid">
+          <section class="panel">
+            <h3>Status Breakdown</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody id="statusBreakdownBody"></tbody>
+            </table>
+          </section>
+
+          <section class="panel">
+            <h3>Source Breakdown</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Count</th>
+                </tr>
+              </thead>
+              <tbody id="sourceBreakdownBody"></tbody>
+            </table>
+          </section>
+
+          <section class="panel">
+            <h3>Daily Revenue</h3>
+            <div id="dailyRevenueChart" class="chart"></div>
+          </section>
+
+          <section class="panel">
+            <h3>Monthly Revenue</h3>
+            <div id="monthlyRevenueChart" class="chart"></div>
+          </section>
+
+          <section class="panel table-wrap">
+            <h3>Top 10 Items</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Quantity</th>
+                  <th>Revenue</th>
+                </tr>
+              </thead>
+              <tbody id="topItemsBody"></tbody>
+            </table>
+          </section>
+
+          <section class="panel">
+            <h3>Loyalty Issued Per Day</h3>
+            <div id="loyaltyChart" class="chart"></div>
+            <div id="statusText" class="helper" style="margin-top:8px;"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/analytics.js"></script>
+  </body>
+</html>

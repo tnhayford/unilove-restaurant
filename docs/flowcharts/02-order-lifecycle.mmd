@@ -1,0 +1,29 @@
+flowchart TD
+    A[Customer starts order session] --> B[Select menu items]
+    B --> C[Create order via OrderService]
+    C --> D{Payment confirmed by Hubtel callback?}
+
+    D -->|Yes| E[Mark order as Paid via OrderService]
+    D -->|No callback after 5 min| F[Run transaction status check]
+    F --> G{Status is Paid?}
+    G -->|Yes| E
+    G -->|No| H[Keep order Unpaid/Failed and notify customer if needed]
+
+    E --> I{Delivery or Pickup?}
+    I -->|Pickup| J[Prepare and complete pickup order]
+    I -->|Delivery| K[Generate random 6-digit delivery code]
+    K --> L[Hash and store code]
+    L --> M[Attempt delivery verification]
+    M --> N{Code valid?}
+    N -->|Yes| O[Complete delivery]
+    N -->|No| P[Increment attempt counter]
+    P --> Q{Attempts >= 3?}
+    Q -->|No| M
+    Q -->|Yes| R[Block completion and escalate]
+
+O --> S["Issue loyalty points: floor(order_total / 35) * 5"]
+    J --> S
+    S --> T[Send completion SMS]
+
+    U{Order returned/refunded?} -->|Yes| V[Do NOT award loyalty]
+    U -->|Yes| W[Send returned-order SMS + log rider_id]

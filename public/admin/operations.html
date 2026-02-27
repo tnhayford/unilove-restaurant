@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Operations Board</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body class="ops-board-page">
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Live operations board</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/order-history.html">← Back</button>
+            <div>
+              <h1>Operations Board</h1>
+              <div class="meta">Live kitchen, dispatch, and rider execution.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <span id="opsLastSync" class="meta">Sync: --</span>
+            <button id="opsRefreshBtn" class="btn">Refresh</button>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel ops-toolbar">
+          <div class="ops-toolbar-row">
+            <div class="ops-tab-strip" role="tablist" aria-label="Operations Views">
+              <button
+                id="ordersTabBtn"
+                class="ops-tab-btn active"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                data-view="orders"
+              >
+                Active Orders
+              </button>
+              <button
+                id="exceptionsTabBtn"
+                class="ops-tab-btn"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-view="exceptions"
+              >
+                Exceptions
+              </button>
+              <button
+                id="completedTabBtn"
+                class="ops-tab-btn"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-view="completed"
+              >
+                Completed
+              </button>
+              <button
+                id="ridersTabBtn"
+                class="ops-tab-btn"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                data-view="riders"
+              >
+                Riders Board
+              </button>
+            </div>
+            <div id="opsBoardStatus" class="helper">Loading live operations data...</div>
+          </div>
+        </section>
+
+        <section id="ordersBoardView" class="ops-view" role="tabpanel" aria-labelledby="ordersTabBtn">
+          <div class="board ops-order-board">
+            <section class="lane lane-awaiting_payment">
+              <div class="lane-header">
+                <span class="lane-title">Awaiting Payment</span>
+                <span id="awaitingPaymentCount" class="badge-count">0</span>
+              </div>
+              <div id="awaitingPaymentLane" class="lane-content"></div>
+            </section>
+
+            <section class="lane lane-kitchen">
+              <div class="lane-header">
+                <span class="lane-title">Kitchen</span>
+                <span id="kitchenCount" class="badge-count">0</span>
+              </div>
+              <div id="kitchenLane" class="lane-content"></div>
+            </section>
+
+            <section class="lane lane-ready_dispatch">
+              <div class="lane-header">
+                <span class="lane-title">Ready / Dispatch</span>
+                <span id="readyDispatchCount" class="badge-count">0</span>
+              </div>
+              <div id="readyDispatchLane" class="lane-content"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="exceptionsBoardView" class="ops-view ops-view-hidden" role="tabpanel" aria-labelledby="exceptionsTabBtn">
+          <div class="board ops-exceptions-board">
+            <section class="lane lane-refund_queue">
+              <div class="lane-header">
+                <span class="lane-title">Refund Queue</span>
+                <span id="refundQueueCount" class="badge-count">0</span>
+              </div>
+              <div id="refundQueueLane" class="lane-content"></div>
+            </section>
+
+            <section class="lane lane-canceled">
+              <div class="lane-header">
+                <span class="lane-title">Canceled / Returned</span>
+                <span id="canceledCount" class="badge-count">0</span>
+              </div>
+              <div id="canceledLane" class="lane-content"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="completedBoardView" class="ops-view ops-view-hidden" role="tabpanel" aria-labelledby="completedTabBtn">
+          <section class="ops-completed-shell">
+            <header class="ops-completed-head">
+              <div>
+                <h2>Completed Orders</h2>
+                <p>All delivered orders in one full-page board.</p>
+              </div>
+              <div class="ops-completed-total">
+                <span>Total Completed</span>
+                <strong id="completedCount">0</strong>
+              </div>
+            </header>
+            <div id="completedLane" class="ops-completed-list"></div>
+          </section>
+        </section>
+
+        <section id="ridersBoardView" class="ops-view ops-view-hidden" role="tabpanel" aria-labelledby="ridersTabBtn">
+          <div class="rider-board-layout">
+            <section class="panel rider-availability-panel">
+              <div class="rider-column-head">
+                <h3>Rider Availability</h3>
+                <a id="manageRidersBtn" class="btn btn-sm" href="/admin/riders.html">Manage Riders</a>
+              </div>
+
+              <details class="rider-group" open>
+                <summary>
+                  <span>Available Riders</span>
+                  <span id="availableRiderCount" class="badge-count">0</span>
+                </summary>
+                <div id="availableRidersLane" class="rider-lane-list"></div>
+              </details>
+
+              <details class="rider-group" open>
+                <summary>
+                  <span>Busy Riders</span>
+                  <span id="busyRiderCount" class="badge-count">0</span>
+                </summary>
+                <div id="busyRidersLane" class="rider-lane-list"></div>
+              </details>
+
+              <details class="rider-group">
+                <summary>
+                  <span>Offline Riders</span>
+                  <span id="offlineRiderCount" class="badge-count">0</span>
+                </summary>
+                <div id="offlineRidersLane" class="rider-lane-list"></div>
+              </details>
+            </section>
+
+            <section class="panel rider-delivery-section">
+              <div class="rider-column-head">
+                <h3>Delivery Lanes</h3>
+                <span class="order-meta">Separate dispatch columns</span>
+              </div>
+              <div class="rider-delivery-grid">
+                <section class="rider-delivery-lane">
+                  <div class="rider-delivery-head">
+                    <span>Ready for Delivery</span>
+                    <span id="readyForDeliveryCount" class="badge-count">0</span>
+                  </div>
+                  <div id="readyForDeliveryLane" class="rider-delivery-list"></div>
+                </section>
+
+                <section class="rider-delivery-lane">
+                  <div class="rider-delivery-head">
+                    <span>Pending Rider Acceptance</span>
+                    <span id="pendingAcceptanceCount" class="badge-count">0</span>
+                  </div>
+                  <div id="pendingAcceptanceLane" class="rider-delivery-list"></div>
+                </section>
+
+                <section class="rider-delivery-lane">
+                  <div class="rider-delivery-head">
+                    <span>Delivered</span>
+                    <span id="deliveredCount" class="badge-count">0</span>
+                  </div>
+                  <div id="deliveredLane" class="rider-delivery-list"></div>
+                </section>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/operations.js"></script>
+  </body>
+</html>

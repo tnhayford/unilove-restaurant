@@ -1,0 +1,55 @@
+{
+  "sampleMeta": {
+    "source": "payments.raw_payload",
+    "observedAt": "2026-02-25 09:33:23",
+    "orderClientReference": "3cde6f4a35944712ae695aa5629a5803",
+    "statusPersisted": "PAID",
+    "redacted": false,
+    "signatureMode": "hmac-sha256-hex",
+    "signatureBodyEncoding": "JSON.stringify(body)"
+  },
+  "headers": {
+    "x-hubtel-signature": "6a406fd6a4d429235a70d3e1d5e459f4c9074ca3a0dcb36e9e9aa2890369af21"
+  },
+  "body": {
+    "SessionId": "3cde6f4a35944712ae695aa5629a5803",
+    "OrderId": "0f5242201cc8433ca6be6610aeef77bc",
+    "ExtraData": {},
+    "OrderInfo": {
+      "CustomerMobileNumber": "233540870612",
+      "CustomerEmail": null,
+      "CustomerName": "THOMAS NYARKO HAYFORD",
+      "Status": "Paid",
+      "OrderDate": "2026-02-25T09:33:00.3266016+00:00",
+      "Currency": "GHS",
+      "BranchName": "Ayeduase Branch",
+      "IsRecurring": false,
+      "RecurringInvoiceId": null,
+      "Subtotal": 0.02,
+      "Items": [
+        {
+          "ItemId": "905f367b934844a7abbb22779987dec0",
+          "Name": "Unilove Order R00017",
+          "Quantity": 1,
+          "UnitPrice": 0.01
+        }
+      ],
+      "Payment": {
+        "PaymentType": "mobilemoney",
+        "AmountPaid": 0.02,
+        "AmountAfterCharges": 0.01,
+        "PaymentDate": "2026-02-25T09:33:00.3266016+00:00",
+        "PaymentDescription": "The MTN Mobile Money payment has been approved and processed successfully.",
+        "IsSuccessful": true
+      }
+    }
+  },
+  "headersSha256Prefixed": {
+    "x-hubtel-signature": "sha256=6a406fd6a4d429235a70d3e1d5e459f4c9074ca3a0dcb36e9e9aa2890369af21"
+  },
+  "altAcceptedHeaderKeys": [
+    "x-signature",
+    "signature",
+    "x-callback-signature"
+  ]
+}

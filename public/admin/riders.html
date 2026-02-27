@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rider Management</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Rider onboarding and access</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Rider Management</h1>
+              <div class="meta">Create rider accounts, set PIN, and control active status.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <form id="createRiderForm" class="filters">
+            <div>
+              <label>Rider ID</label>
+              <input id="riderId" class="input" placeholder="rider-kofi" required />
+            </div>
+            <div>
+              <label>Full Name</label>
+              <input id="riderFullName" class="input" placeholder="Kofi Mensah" required />
+            </div>
+            <div>
+              <label>PIN (numeric)</label>
+              <input id="riderPin" class="input" type="password" inputmode="numeric" minlength="4" required />
+            </div>
+            <div>
+              <label>Account Status</label>
+              <select id="riderStatus" class="select">
+                <option value="active">active</option>
+                <option value="inactive">inactive</option>
+              </select>
+            </div>
+            <div class="staff-form-action">
+              <button type="submit" class="btn primary">Create Rider</button>
+            </div>
+          </form>
+          <div id="statusText" class="helper" style="margin-top: 10px"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Rider ID</th>
+                <th>Name</th>
+                <th>Mode</th>
+                <th>Shift</th>
+                <th>Account</th>
+                <th>Availability</th>
+                <th>Last Seen</th>
+                <th>Last Login</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="riderBody"></tbody>
+          </table>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/riders.js"></script>
+  </body>
+</html>

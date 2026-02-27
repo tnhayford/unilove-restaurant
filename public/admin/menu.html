@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Menu Management</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+    <link rel="stylesheet" href="/admin/assets/css/menu-management.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Availability controls</div>
+        </div>
+
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel menu-main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Menu Management</h1>
+              <div class="meta">Organize catalog, rename items, and manage USSD display from one workspace.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="kpis menu-kpi-strip">
+          <article class="kpi-card accent-sky">
+            <div class="label">Total Items</div>
+            <div class="value" id="menuTotal">0</div>
+          </article>
+          <article class="kpi-card accent-mint">
+            <div class="label">Available</div>
+            <div class="value" id="menuActive">0</div>
+          </article>
+          <article class="kpi-card accent-warm">
+            <div class="label">Unavailable</div>
+            <div class="value" id="menuInactive">0</div>
+          </article>
+        </section>
+
+        <section class="panel menu-workspace">
+          <div class="menu-tabs" role="tablist" aria-label="Menu Workspace Tabs">
+            <button type="button" class="menu-tab active" data-menu-tab="catalog" role="tab" aria-selected="true">Catalog</button>
+            <button type="button" class="menu-tab" data-menu-tab="categories" role="tab" aria-selected="false">Categories</button>
+            <button type="button" class="menu-tab" data-menu-tab="ussd" role="tab" aria-selected="false">USSD</button>
+          </div>
+          <div id="statusText" class="helper menu-status-text">Loading menu workspace...</div>
+
+          <section class="menu-panel is-active" data-menu-panel="catalog">
+            <div class="menu-catalog-grid">
+              <aside class="menu-side-column">
+                <article class="menu-card tone-cyan">
+                  <h3>Quick Add Item</h3>
+                  <form id="createItemForm" class="menu-form-stack">
+                    <div>
+                      <label>Category</label>
+                      <select id="itemCategory" class="select" required></select>
+                    </div>
+                    <div>
+                      <label>Item Name</label>
+                      <input id="itemName" class="input" placeholder="e.g. Fried Rice & Fish" required />
+                    </div>
+                    <div>
+                      <label>Price (GHS)</label>
+                      <input id="itemPrice" class="input" type="number" step="0.01" min="0.01" required />
+                    </div>
+                    <button type="submit" class="btn btn-tone-blue">Add Item</button>
+                  </form>
+                </article>
+
+                <article class="menu-card tone-gold">
+                  <h3>Catalog Filters</h3>
+                  <div class="menu-form-stack">
+                    <div>
+                      <label>Search</label>
+                      <input id="menuSearch" class="input" placeholder="Search by item or category" />
+                    </div>
+                    <div>
+                      <label>Availability</label>
+                      <select id="availabilityFilter" class="select">
+                        <option value="">All</option>
+                        <option value="active">Available</option>
+                        <option value="inactive">Unavailable</option>
+                      </select>
+                    </div>
+                    <button id="refreshMenuBtn" class="btn btn-tone-orange" type="button">Refresh Catalog</button>
+                  </div>
+                  <div id="menuShowing" class="helper menu-count-hint"></div>
+                </article>
+
+                <article class="menu-card tone-violet">
+                  <h3>Category Focus</h3>
+                  <div id="categoryButtons" class="category-buttons menu-category-filter"></div>
+                  <div class="helper">Choose a category filter to declutter the table.</div>
+                </article>
+              </aside>
+
+              <section class="menu-main-column panel table-wrap menu-table-shell">
+                <table class="table menu-table">
+                  <thead>
+                    <tr>
+                      <th>Item Name</th>
+                      <th>Category</th>
+                      <th>Price</th>
+                      <th>USSD View</th>
+                      <th>Availability</th>
+                      <th>Manage</th>
+                    </tr>
+                  </thead>
+                  <tbody id="menuBody"></tbody>
+                </table>
+              </section>
+            </div>
+          </section>
+
+          <section class="menu-panel" data-menu-panel="categories" hidden>
+            <div class="menu-category-grid">
+              <article class="menu-card tone-cyan">
+                <h3>Create Category</h3>
+                <form id="createCategoryForm" class="menu-form-stack">
+                  <div>
+                    <label>New Category Name</label>
+                    <input id="newCategoryName" class="input" placeholder="e.g. Shawarma" required />
+                  </div>
+                  <button type="submit" class="btn btn-tone-blue">Create Category</button>
+                </form>
+              </article>
+
+              <article class="menu-card tone-violet">
+                <h3>Rename Category</h3>
+                <form id="renameCategoryForm" class="menu-form-stack">
+                  <div>
+                    <label>Current Category</label>
+                    <select id="renameFromCategory" class="select"></select>
+                  </div>
+                  <div>
+                    <label>New Name</label>
+                    <input id="renameToCategory" class="input" placeholder="e.g. Rice Bowls" required />
+                  </div>
+                  <button type="submit" class="btn btn-tone-purple">Rename Category</button>
+                </form>
+              </article>
+
+              <article class="menu-card tone-rose">
+                <h3>Delete Category</h3>
+                <form id="deleteCategoryForm" class="menu-form-stack">
+                  <div>
+                    <label>Select Category</label>
+                    <select id="deleteCategoryName" class="select"></select>
+                  </div>
+                  <button type="submit" class="btn danger">Delete Category</button>
+                  <div class="helper">Deleting a category will remove every item under it.</div>
+                </form>
+              </article>
+            </div>
+          </section>
+
+          <section class="menu-panel" data-menu-panel="ussd" hidden>
+            <div class="menu-ussd-layout">
+              <article class="menu-card tone-gold">
+                <h3>USSD Optimization</h3>
+                <p class="helper">Clean labels, keep menu order clear, and configure item visibility for short screens.</p>
+                <button id="optimizeUssdBtn" class="btn btn-tone-orange" type="button">Optimize USSD Names</button>
+                <p class="helper">Priority order remains: Shawarma, Jollof Rice, Fried Rice, Assorted Rice, then others.</p>
+              </article>
+
+              <article class="panel menu-ussd-preview-panel">
+                <div class="menu-ussd-preview-head">
+                  <h3>USSD Order Preview</h3>
+                  <span class="meta">Visible items in current sequence</span>
+                </div>
+                <div id="ussdPreviewList" class="menu-ussd-preview-list"></div>
+              </article>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/menu.js"></script>
+  </body>
+</html>

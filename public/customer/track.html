@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unilove Order Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/customer/track.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+    <div class="ambient ambient-c"></div>
+
+    <main class="tracker-app">
+      <header class="hero-card">
+        <div class="hero-main">
+          <p class="eyebrow">UNILOVE FOODS</p>
+          <h1>Live Delivery Tracker</h1>
+          <p class="hero-copy">
+            One clean page for customers to follow order progress in real time.
+          </p>
+        </div>
+      </header>
+
+      <section class="panel controls-panel">
+        <form id="trackForm" class="track-form" novalidate>
+          <label for="orderNumberInput">Order Number</label>
+          <div class="input-row">
+            <input
+              id="orderNumberInput"
+              class="input"
+              placeholder="R00108"
+              autocomplete="off"
+              required
+            />
+            <button id="trackBtn" class="btn primary" type="submit">Track Order</button>
+          </div>
+          <label for="trackingTokenInput">Tracking Token</label>
+          <input
+            id="trackingTokenInput"
+            class="input"
+            placeholder="Secure token from SMS link"
+            autocomplete="off"
+            required
+          />
+        </form>
+
+        <div class="action-row">
+          <label class="toggle-row">
+            <input id="autoRefreshToggle" type="checkbox" checked />
+            <span id="autoRefreshLabel">Auto refresh every 6 seconds</span>
+          </label>
+          <button id="refreshNowBtn" class="btn ghost" type="button">Refresh now</button>
+        </div>
+
+        <div id="statusText" class="status helper">Open your secure SMS tracking link, or enter order number and token.</div>
+      </section>
+
+      <section id="resultPanel" class="panel result-panel" aria-live="polite">
+        <div class="result-head">
+          <div>
+            <p class="label">Order</p>
+            <p id="orderNumberValue" class="order-number">-</p>
+          </div>
+          <div class="head-right">
+            <span id="statusPill" class="status-pill">Waiting</span>
+            <p class="sync-text">Last sync: <span id="lastSyncValue">-</span></p>
+          </div>
+        </div>
+
+        <div id="journeyRail" class="journey-rail"></div>
+
+        <div class="details-grid">
+          <article class="detail-card">
+            <h3>Order Details</h3>
+            <dl class="detail-list">
+              <div><dt>Current Stage</dt><dd id="stageValue">-</dd></div>
+              <div><dt>Delivery Type</dt><dd id="deliveryTypeValue">-</dd></div>
+              <div><dt>Order Source</dt><dd id="sourceValue">-</dd></div>
+              <div><dt>Payment Method</dt><dd id="paymentMethodValue">-</dd></div>
+              <div><dt>Total</dt><dd id="subtotalValue">-</dd></div>
+              <div><dt>SLA ETA</dt><dd id="etaValue">-</dd></div>
+              <div><dt>Created</dt><dd id="createdAtValue">-</dd></div>
+              <div><dt>Updated</dt><dd id="updatedAtValue">-</dd></div>
+            </dl>
+          </article>
+
+          <article class="detail-card">
+            <h3>Customer Details</h3>
+            <dl class="detail-list">
+              <div><dt>Name</dt><dd id="customerNameValue">-</dd></div>
+              <div><dt>Phone</dt><dd id="customerPhoneValue">-</dd></div>
+              <div><dt>Items</dt><dd id="itemCountValue">-</dd></div>
+            </dl>
+          </article>
+
+          <article class="detail-card">
+            <h3>Delivery Details</h3>
+            <dl class="detail-list">
+              <div><dt>Address</dt><dd id="addressValue">-</dd></div>
+              <div><dt>Payment Confirmed</dt><dd id="paymentConfirmedAtValue">-</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <section class="items-card">
+          <div class="items-head">
+            <h3>Order Items</h3>
+            <span id="itemCountBadge" class="item-count-badge">0 item(s)</span>
+          </div>
+          <ul id="itemsList" class="items-list"></ul>
+        </section>
+
+        <div class="timeline-wrap">
+          <ol id="timelineList" class="timeline"></ol>
+        </div>
+      </section>
+    </main>
+
+    <script src="/customer/track.js"></script>
+  </body>
+</html>

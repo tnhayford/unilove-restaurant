@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Disputes</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Customer disputes</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Disputes</h1>
+              <div class="meta">Track payment, quality, and service disputes to resolution.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Create Dispute</h3>
+          <div class="filters">
+            <div><label>Customer Phone</label><input id="customerPhone" class="input" /></div>
+            <div><label>Order ID (optional)</label><input id="orderId" class="input" /></div>
+            <div><label>Type</label><input id="disputeType" class="input" placeholder="payment, quality, delivery, billing" /></div>
+            <div><label>Amount (optional)</label><input id="amountCedis" class="input" type="number" step="0.01" min="0" /></div>
+            <div style="grid-column:1 / -1;"><label>Notes</label><textarea id="notes" class="input" rows="3"></textarea></div>
+          </div>
+          <div style="margin-top:10px;"><button id="createDisputeBtn" class="btn primary">Create Dispute</button></div>
+        </section>
+
+        <section class="panel">
+          <div class="filters">
+            <div><label>Search</label><input id="searchInput" class="input" placeholder="phone, order, notes" /></div>
+            <div>
+              <label>Status</label>
+              <select id="statusFilter" class="select">
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="review">Review</option>
+                <option value="resolved">Resolved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div><label>Type</label><input id="typeFilter" class="input" placeholder="payment" /></div>
+          </div>
+          <div id="statusText" class="helper" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Status</th>
+                <th>Type</th>
+                <th>Order</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Notes</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="disputeBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="paginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="prevBtn" class="btn">Prev</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextBtn" class="btn">Next</button>
+          </div>
+          <form id="pageJumpForm" class="pagination-jump">
+            <label for="pageInput">Go to page</label>
+            <input id="pageInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/disputes.js"></script>
+  </body>
+</html>

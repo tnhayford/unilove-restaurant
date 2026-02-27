@@ -1,0 +1,42 @@
+flowchart LR
+    C[Customer] -->|Dials USSD / Uses Hubtel App or Web Mall| HPS[Hubtel Programmable Services]
+    HPS -->|Push request: Initiation/Response| SI[Service Interaction Endpoint]
+
+    subgraph APP[Restaurant Backend]
+        SI --> OC[Order Controller]
+        OC --> OS[OrderService]
+        OS --> DB[(Database)]
+        OS --> LS[LoyaltyService]
+        OS --> DS[DeliveryService]
+        OS --> SMS[NotificationService]
+        LS --> DB
+        DS --> DB
+        SMS --> DB
+        AUD[AuditLogService] --> DB
+    end
+
+    OS -->|All status transitions| AUD
+    DS -->|Sensitive verification events| AUD
+
+    SI -->|AddToCart response| HPS
+    HPS -->|Service Fulfillment callback after payment| CB[Payment Callback Endpoint]
+    CB -->|Verify signature + validate payload| OS
+    CB --> AUD
+
+    OS -->|Optional: if no final callback after 5 min| TSC[Hubtel Transaction Status Check API]
+    TSC --> OS
+
+    OS -->|Service fulfillment callback within 1 hour| HCB[Hubtel Fulfillment Callback Endpoint]
+
+    SMS -->|Send SMS| HSMS[Hubtel SMS API]
+    HSMS --> SMS
+
+    subgraph ADMIN[Admin Dashboard]
+        UI[Admin UI]
+        AUTH[Auth Layer JWT HttpOnly + CSRF]
+    end
+    UI --> AUTH --> OC
+    AUTH --> AUD
+
+    DB --> AN[Analytics SQL Queries]
+    AN --> UI

@@ -1,0 +1,18 @@
+{
+  "sampleMeta": {
+    "source": "hubtel programmable services interaction request",
+    "observedIn": "live USSD sessions and API schema",
+    "notes": "Timeout event request from Hubtel when channel closes the session."
+  },
+  "body": {
+    "Type": "Timeout",
+    "Message": "",
+    "ServiceCode": "*713*8575#",
+    "Operator": "MTN",
+    "ClientState": "ITEM",
+    "Mobile": "233540870612",
+    "SessionId": "9ebdb4f2f5d34759a129c56ccaf44327",
+    "Sequence": 12,
+    "Platform": "USSD"
+  }
+}

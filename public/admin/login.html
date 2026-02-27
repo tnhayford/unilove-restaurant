@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <main class="auth-page">
+      <section class="auth-visual">
+        <h1>Restaurant Control Center</h1>
+        <p>
+          Run operations in real time: incoming orders, kitchen throughput, pickup readiness,
+          delivery exceptions, menu availability, analytics, and in-store order capture.
+        </p>
+        <p class="helper">Security enforced with HttpOnly JWT + CSRF + audit logging.</p>
+      </section>
+
+      <section class="auth-form-wrap">
+        <form id="loginForm" class="auth-form">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <h2>Admin Sign In</h2>
+            <button type="button" id="themeToggle" class="btn">Dark Mode</button>
+          </div>
+
+          <div class="form-grid">
+            <label>Email</label>
+            <input id="email" class="input" type="email" required autocomplete="username" />
+
+            <label>Password</label>
+            <input id="password" class="input" type="password" required autocomplete="current-password" />
+
+            <button class="btn primary" type="submit">Enter Dashboard</button>
+            <div id="loginStatus" class="helper">Use your configured admin credentials.</div>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/login.js"></script>
+  </body>
+</html>

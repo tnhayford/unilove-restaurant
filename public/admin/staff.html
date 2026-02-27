@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff Management</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Access control</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Staff Management</h1>
+              <div class="meta">Create cashier/attendant access and assign roles.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="adminMeta" class="meta"></span>
+            <button id="themeToggle" class="btn">Dark Mode</button>
+            <button id="logoutBtn" class="btn danger">Logout</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <form id="createStaffForm" class="filters">
+            <div>
+              <label>Full Name</label>
+              <input id="staffFullName" class="input" placeholder="Kofi Mensah" required />
+            </div>
+            <div>
+              <label>Email</label>
+              <input id="staffEmail" class="input" type="email" placeholder="staff@iderwell.com" required />
+            </div>
+            <div>
+              <label>Temporary Password</label>
+              <input id="staffPassword" class="input" type="password" minlength="8" required />
+            </div>
+            <div>
+              <label>Role</label>
+              <select id="staffRole" class="select">
+                <option value="staff">staff</option>
+                <option value="admin">admin</option>
+              </select>
+            </div>
+            <div class="staff-form-action">
+              <button type="submit" class="btn primary">Add Staff</button>
+            </div>
+          </form>
+          <div id="statusText" class="helper" style="margin-top: 10px"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="staffBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Action Permissions (Staff Only)</h3>
+          <div class="filters">
+            <div>
+              <label>Select Staff</label>
+              <select id="permissionUserSelect" class="select"></select>
+            </div>
+            <div class="staff-form-action">
+              <button type="button" id="loadPermissionsBtn" class="btn">Load Permissions</button>
+              <button type="button" id="savePermissionsBtn" class="btn primary">Apply Permissions</button>
+            </div>
+          </div>
+          <div id="permissionGrid" class="menu-card-grid" style="margin-top:10px;"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/staff.js"></script>
+  </body>
+</html>

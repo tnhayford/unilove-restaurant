@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Incidents</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Incident runbook</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Incidents</h1>
+              <div class="meta">Capture incidents, owners, severity, and resolution trail.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button id="refreshBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="panel">
+          <h3 style="margin-top:0;">Create Incident</h3>
+          <div class="filters">
+            <div><label>Title</label><input id="incidentTitle" class="input" /></div>
+            <div>
+              <label>Severity</label>
+              <select id="incidentSeverity" class="select">
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+            <div><label>Category</label><input id="incidentCategory" class="input" placeholder="payments, kitchen, delivery" /></div>
+            <div><label>Order ID (optional)</label><input id="incidentOrderId" class="input" /></div>
+            <div style="grid-column:1 / -1;"><label>Summary</label><textarea id="incidentSummary" class="input" rows="3"></textarea></div>
+          </div>
+          <div style="margin-top:10px;"><button id="createIncidentBtn" class="btn primary">Create Incident</button></div>
+        </section>
+
+        <section class="panel">
+          <div class="filters">
+            <div><label>Search</label><input id="searchInput" class="input" placeholder="title, category, order" /></div>
+            <div>
+              <label>Status</label>
+              <select id="statusFilter" class="select">
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="investigating">Investigating</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+            <div>
+              <label>Severity</label>
+              <select id="severityFilter" class="select">
+                <option value="">All</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+          <div id="statusText" class="helper" style="margin-top:8px;"></div>
+        </section>
+
+        <section class="panel table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Order</th>
+                <th>Owner</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="incidentBody"></tbody>
+          </table>
+        </section>
+
+        <section class="panel pagination-panel">
+          <div class="pagination-meta helper" id="paginationMeta">Page 1</div>
+          <div class="pagination-controls">
+            <button id="prevBtn" class="btn">Prev</button>
+            <div id="pageNumbers" class="page-numbers"></div>
+            <button id="nextBtn" class="btn">Next</button>
+          </div>
+          <form id="pageJumpForm" class="pagination-jump">
+            <label for="pageInput">Go to page</label>
+            <input id="pageInput" class="input" type="number" min="1" step="1" />
+            <button type="submit" class="btn">Go</button>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/incidents.js"></script>
+  </body>
+</html>
