@@ -131,8 +131,10 @@ async function runPaymentStatusCheck(clientReference) {
   };
 }
 
-async function reconcilePendingPayments() {
-  const staleOrders = await listPendingOrdersOlderThan(5);
+async function reconcilePendingPayments(options = {}) {
+  const minAgeMinutes = Math.max(1, Number(options.minAgeMinutes || 5));
+  const limit = Math.max(1, Math.min(Number(options.limit || 200), 500));
+  const staleOrders = await listPendingOrdersOlderThan(minAgeMinutes, limit);
   let processed = 0;
   let paid = 0;
 
@@ -170,6 +172,7 @@ async function reconcilePendingPayments() {
   }
 
   return {
+    minAgeMinutes,
     checked: staleOrders.length,
     processed,
     paid,

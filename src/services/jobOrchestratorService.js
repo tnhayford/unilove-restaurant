@@ -61,13 +61,21 @@ function getSchedulerDefinitions() {
 
 async function runTask(taskName, payload = null) {
   if (taskName === "payment_reconcile") {
-    return reconcilePendingPayments();
+    return reconcilePendingPayments({
+      minAgeMinutes: 5,
+      limit: 200,
+    });
   }
   if (taskName === "fast_prompt_reconcile") {
-    return reconcileActivePromptAttempts({
+    const prompt = await reconcileActivePromptAttempts({
       maxAgeMinutes: Number(payload?.maxAgeMinutes || env.fastPromptReconcileMaxAgeMinutes),
       limit: Number(payload?.limit || env.fastPromptReconcileLimit),
     });
+    const pending = await reconcilePendingPayments({
+      minAgeMinutes: 1,
+      limit: 120,
+    });
+    return { prompt, pending };
   }
   if (taskName === "report_schedule_tick") {
     return runReportScheduleTick();

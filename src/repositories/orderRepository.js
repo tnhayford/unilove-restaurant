@@ -219,8 +219,9 @@ async function listOrderHistory(filters = {}) {
   };
 }
 
-async function listPendingOrdersOlderThan(minutes) {
+async function listPendingOrdersOlderThan(minutes, limit = 200) {
   const db = await getDb();
+  const safeLimit = Math.max(1, Math.min(Number(limit || 200), 500));
   return db.all(
     `SELECT *
      FROM orders
@@ -229,8 +230,8 @@ async function listPendingOrdersOlderThan(minutes) {
        AND COALESCE(payment_status, 'PENDING') = 'PENDING'
        AND datetime(created_at) <= datetime('now', ?)
      ORDER BY datetime(created_at) ASC
-     LIMIT 200`,
-    [`-${minutes} minutes`],
+     LIMIT ?`,
+    [`-${minutes} minutes`, safeLimit],
   );
 }
 
