@@ -68,10 +68,12 @@ async function getOrderByHubtelSessionId(sessionId) {
   return db.get("SELECT * FROM orders WHERE hubtel_session_id = ?", [sessionId]);
 }
 
-async function listOrders() {
+async function listOrders(limit = 200) {
   const db = await getDb();
+  const safeLimit = Math.max(20, Math.min(Number(limit || 200), 300));
   return db.all(
-    `SELECT * FROM orders ORDER BY datetime(created_at) DESC LIMIT 200`,
+    `SELECT * FROM orders ORDER BY datetime(created_at) DESC LIMIT ?`,
+    [safeLimit],
   );
 }
 

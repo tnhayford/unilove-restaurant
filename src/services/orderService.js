@@ -1100,7 +1100,8 @@ async function getOrderByOrderNumberForTracking(input) {
 
 async function getOrdersForAdmin(options = {}) {
   const includeItems = options.includeItems === true;
-  const orders = await listOrders();
+  const limit = Math.max(20, Math.min(Number(options.limit || 120), 300));
+  const orders = await listOrders(limit);
   const output = [];
   for (const order of orders) {
     output.push({

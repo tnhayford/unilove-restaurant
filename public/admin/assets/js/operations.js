@@ -2,6 +2,7 @@ const ORDER_REFRESH_MS = 12000;
 const ORDER_HEALTHCHECK_MS = 60000;
 const OPS_STREAM_RECONNECT_MS = 8000;
 const RIDER_REFRESH_MS = 30000;
+const REALTIME_MIN_REFRESH_GAP_MS = 1500;
 const DELAY_THRESHOLD_MINUTES = 30;
 const OPS_ALERT_SOUND_URL = "/admin/assets/sounds/ops-incoming-alert.m4a";
 const MAX_VISIBLE_ORDER_CARDS_PER_LANE = 8;
@@ -82,6 +83,7 @@ const state = {
   activeView: "orders",
   refreshTimerId: null,
   lastRidersFetchAt: 0,
+  lastBoardRefreshAt: 0,
   opsEventSource: null,
   opsStreamConnected: false,
   opsStreamRetryTimerId: null,
@@ -1018,6 +1020,11 @@ function queueRealtimeRefresh() {
   if (state.realtimeRefreshTimerId) return;
   state.realtimeRefreshTimerId = setTimeout(() => {
     state.realtimeRefreshTimerId = null;
+    const elapsed = Date.now() - Number(state.lastBoardRefreshAt || 0);
+    if (elapsed < REALTIME_MIN_REFRESH_GAP_MS) {
+      queueRealtimeRefresh();
+      return;
+    }
     if (document.hidden) return;
     refreshBoard({ silent: true }).catch(() => {
       // best effort realtime refresh
@@ -1100,7 +1107,7 @@ function connectOpsStream() {
 
 async function fetchOrders() {
   try {
-    const payload = await apiGet("/api/admin/orders");
+    const payload = await apiGet("/api/admin/orders?limit=120");
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     return rows.map((row) => normalizeOrder(row));
   } catch (error) {
@@ -1148,6 +1155,7 @@ async function fetchOrderPolicy() {
 }
 
 async function refreshBoard({ silent = false } = {}) {
+  state.lastBoardRefreshAt = Date.now();
   if (!silent) {
     setBoardStatus("Refreshing operations board...", "helper");
   }

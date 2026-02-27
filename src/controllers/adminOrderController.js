@@ -59,7 +59,8 @@ const orderHistoryQuerySchema = z
 
 async function listOrders(req, res) {
   const includeItems = String(req.query.includeItems || "").trim().toLowerCase() === "true";
-  const orders = await getOrdersForAdmin({ includeItems });
+  const limit = req.query.limit ? Number(req.query.limit) : 120;
+  const orders = await getOrdersForAdmin({ includeItems, limit });
   return res.json({ data: orders });
 }
 
