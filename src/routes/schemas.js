@@ -126,6 +126,12 @@ const riderIncidentCreateSchema = z.object({
   severity: z.enum(["low", "medium", "high", "critical"]).optional(),
 });
 
+const riderCashCollectionSchema = z.object({
+  orderId: z.string().trim().min(1),
+  collectionMethod: z.enum(["cash", "momo"]).optional().default("cash"),
+  note: z.string().trim().max(200).optional(),
+});
+
 const adminLoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(256),
@@ -404,6 +410,7 @@ module.exports = {
   riderDeviceTokenSchema,
   riderShiftUpdateSchema,
   riderIncidentCreateSchema,
+  riderCashCollectionSchema,
   adminLoginSchema,
   adminOrderStatusUpdateSchema,
   adminOrderAssignRiderSchema,

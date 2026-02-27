@@ -2,6 +2,7 @@ const fs = require("fs");
 const net = require("net");
 const path = require("path");
 const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const supertest = require("supertest");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -291,5 +292,72 @@ describe("Security hardening integration", () => {
     expect(response.status).toBe(200);
     expect(response.body?.data?.token).toBeTruthy();
     expect(response.body?.data?.rider?.mode).toBe("guest");
+  });
+
+  it("blocks COD OTP verification until rider confirms collection", async () => {
+    if (!canRunHttpTests) return;
+
+    const loginRes = await request.post("/api/rider/auth/login").send({
+      mode: "guest",
+      riderName: "Rider Kojo",
+      riderId: "rider-cod-1",
+      guestAccessCode: "guest-access-2026",
+    });
+    expect(loginRes.status).toBe(200);
+    const token = loginRes.body?.data?.token;
+    expect(token).toBeTruthy();
+
+    const itemId = await seedMenuItem();
+    const createRes = await request.post("/api/orders").send({
+      phone: "0240007111",
+      fullName: "COD Customer",
+      deliveryType: "delivery",
+      address: "Spintex, Accra",
+      paymentMethod: "cash_on_delivery",
+      items: [{ itemId, quantity: 1 }],
+    });
+    expect(createRes.status).toBe(201);
+    const orderId = createRes.body?.data?.id;
+    expect(orderId).toBeTruthy();
+
+    const db = await getDbHandle();
+    await db.run(
+      `UPDATE orders
+       SET status = 'OUT_FOR_DELIVERY',
+           payment_method = 'cash_on_delivery',
+           payment_status = 'PENDING',
+           assigned_rider_id = 'rider-cod-1',
+           updated_at = datetime('now')
+       WHERE id = ?`,
+      [orderId],
+    );
+    const codeHash = await bcrypt.hash("123456", 10);
+    await db.run(
+      `INSERT INTO delivery_verifications (order_id, code_hash, attempts)
+       VALUES (?, ?, 0)
+       ON CONFLICT(order_id) DO UPDATE SET code_hash = excluded.code_hash, attempts = 0, verified_at = NULL, updated_at = datetime('now')`,
+      [orderId, codeHash],
+    );
+
+    const blockedVerify = await request
+      .post("/api/delivery/verify")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ orderId, code: "123456" });
+    expect(blockedVerify.status).toBe(409);
+    expect(blockedVerify.body?.error).toMatch(/collect/i);
+
+    const collectRes = await request
+      .post("/api/rider/orders/collection")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ orderId, collectionMethod: "cash" });
+    expect(collectRes.status).toBe(200);
+    expect(collectRes.body?.data?.paymentStatusCode).toBe("PAID");
+
+    const verifyRes = await request
+      .post("/api/delivery/verify")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ orderId, code: "123456" });
+    expect(verifyRes.status).toBe(200);
+    expect(verifyRes.body?.data?.success).toBe(true);
   });
 });

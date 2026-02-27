@@ -82,7 +82,7 @@ async function listOutForDeliveryOrders(limit = 80) {
   const db = await getDb();
   const safeLimit = Math.max(1, Math.min(Number(limit || 80), 300));
   return db.all(
-    `SELECT id, order_number, full_name, phone, address, status, subtotal_cedis, assigned_rider_id, created_at, updated_at
+    `SELECT id, order_number, full_name, phone, address, status, subtotal_cedis, assigned_rider_id, payment_method, payment_status, source, created_at, updated_at
      FROM orders
      WHERE status IN ('READY_FOR_PICKUP', 'OUT_FOR_DELIVERY')
        AND delivery_type = 'delivery'

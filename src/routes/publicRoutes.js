@@ -12,6 +12,7 @@ const {
   riderDeviceTokenSchema,
   riderShiftUpdateSchema,
   riderIncidentCreateSchema,
+  riderCashCollectionSchema,
 } = require("./schemas");
 const { listMenu } = require("../controllers/menuController");
 const { createOrder, trackOrder } = require("../controllers/orderController");
@@ -19,7 +20,11 @@ const { streamOrderTrackingEvents } = require("../controllers/realtimeController
 const { processUssd } = require("../controllers/ussdController");
 const { handleHubtelCallback } = require("../controllers/paymentController");
 const { verifyDelivery } = require("../controllers/deliveryController");
-const { listRiderQueue, reportRiderIncident } = require("../controllers/riderController");
+const {
+  listRiderQueue,
+  reportRiderIncident,
+  confirmRiderCashCollection,
+} = require("../controllers/riderController");
 const {
   riderLogin,
   registerDeviceToken,
@@ -78,6 +83,13 @@ router.post(
   asyncHandler(verifyDelivery),
 );
 router.get("/rider/queue", requireRiderKey, requireRiderAuth, asyncHandler(listRiderQueue));
+router.post(
+  "/rider/orders/collection",
+  requireRiderKey,
+  requireRiderAuth,
+  validate(riderCashCollectionSchema),
+  asyncHandler(confirmRiderCashCollection),
+);
 router.post(
   "/rider/incidents",
   requireRiderKey,

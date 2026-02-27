@@ -1,4 +1,4 @@
-const { getRiderQueue } = require("../services/orderService");
+const { getRiderQueue, markCashOnDeliveryCollected } = require("../services/orderService");
 const { createRiderIncidentCase } = require("../services/incidentService");
 const {
   markRiderPresence,
@@ -90,7 +90,19 @@ async function reportRiderIncident(req, res) {
   });
 }
 
+async function confirmRiderCashCollection(req, res) {
+  const rider = req.rider || {};
+  const result = await markCashOnDeliveryCollected({
+    orderId: req.validatedBody.orderId,
+    riderId: rider.sub || null,
+    collectionMethod: req.validatedBody.collectionMethod || "cash",
+    note: req.validatedBody.note || null,
+  });
+  return res.json({ data: result });
+}
+
 module.exports = {
   listRiderQueue,
   reportRiderIncident,
+  confirmRiderCashCollection,
 };

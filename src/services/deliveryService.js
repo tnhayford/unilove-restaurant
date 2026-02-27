@@ -52,6 +52,15 @@ async function verifyDeliveryCode({ orderId, code, riderId }) {
     );
   }
 
+  const paymentMethod = String(order.payment_method || "").trim().toLowerCase();
+  const paymentStatus = String(order.payment_status || "PENDING").trim().toUpperCase();
+  if (paymentMethod === "cash_on_delivery" && paymentStatus !== "PAID") {
+    throw Object.assign(
+      new Error("Collect and confirm payment before OTP verification for this order"),
+      { statusCode: 409 },
+    );
+  }
+
   const record = await getDeliveryVerification(orderId);
   if (!record) {
     throw Object.assign(new Error("Delivery code not generated for this order"), {

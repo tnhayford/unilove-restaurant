@@ -177,6 +177,13 @@ function paymentStatusLabel(paymentStatus) {
   }
 }
 
+function normalizePaymentStatusCode(paymentStatus) {
+  const token = String(paymentStatus || "").trim().toUpperCase();
+  if (token === PAYMENT_STATUS.PAID) return PAYMENT_STATUS.PAID;
+  if (token === PAYMENT_STATUS.FAILED) return PAYMENT_STATUS.FAILED;
+  return PAYMENT_STATUS.PENDING;
+}
+
 function toLineItems(requestedItems, menuItems) {
   const menuMap = new Map(menuItems.map((item) => [item.id, item]));
 
@@ -1147,6 +1154,72 @@ async function markOrderReturned({ orderId, actorId }) {
   return getOrderById(orderId);
 }
 
+async function markCashOnDeliveryCollected({
+  orderId,
+  riderId = null,
+  collectionMethod = "cash",
+  note = null,
+}) {
+  const order = await ensureOrder(orderId);
+  if (order.delivery_type !== "delivery") {
+    throw Object.assign(new Error("Cash collection is available for delivery orders only"), {
+      statusCode: 400,
+    });
+  }
+
+  if (order.status !== ORDER_STATUS.OUT_FOR_DELIVERY) {
+    throw Object.assign(
+      new Error("Order must be OUT_FOR_DELIVERY before confirming cash collection"),
+      { statusCode: 400 },
+    );
+  }
+
+  const paymentMethod = normalizePaymentMethod(order.payment_method, {
+    source: order.source,
+    deliveryType: order.delivery_type,
+  });
+  if (paymentMethod !== PAYMENT_METHOD.CASH_ON_DELIVERY) {
+    throw Object.assign(new Error("Cash collection confirmation is only for cash-on-delivery orders"), {
+      statusCode: 400,
+    });
+  }
+
+  const paymentStatusCode = normalizePaymentStatusCode(order.payment_status);
+  if (paymentStatusCode !== PAYMENT_STATUS.PAID) {
+    await setPaymentStatus(order.id, PAYMENT_STATUS.PAID, { markConfirmedAt: true });
+  }
+
+  await logSensitiveAction({
+    actorType: "rider",
+    actorId: riderId || null,
+    action: "COD_CASH_COLLECTION_CONFIRMED_BY_RIDER",
+    entityType: "order",
+    entityId: order.id,
+    details: {
+      orderNumber: order.order_number,
+      amount: Number(order.subtotal_cedis || 0),
+      collectionMethod: String(collectionMethod || "cash").trim().toLowerCase(),
+      note: note ? String(note).trim() : null,
+    },
+  });
+
+  const updated = await getOrderById(order.id);
+  publishOrderRealtimeEvent("order.cod_collection_confirmed", updated, {
+    actorType: "rider",
+    actorId: riderId || null,
+  });
+
+  return {
+    orderId: updated.id,
+    orderNumber: updated.order_number,
+    paymentMethod,
+    paymentStatusCode: normalizePaymentStatusCode(updated.payment_status),
+    paymentStatus: paymentStatusLabel(updated.payment_status),
+    amountCollectedCedis: Number(updated.subtotal_cedis || 0),
+    collectedAt: updated.payment_confirmed_at || null,
+  };
+}
+
 function getAvailableActions(order) {
   const actions = [];
 
@@ -1349,21 +1422,35 @@ async function getRiderQueue(limit = 80, options = {}) {
     ? rows.filter((row) => String(row.assigned_rider_id || "").trim() === riderId)
     : rows;
 
-  return queueRows.map((row) => ({
-    id: row.id,
-    orderNumber: row.order_number,
-    customerName: row.full_name,
-    customerPhoneMasked: maskPhoneForRiderQueue(row.phone),
-    customerPhone: includeSensitivePhone ? (row.phone || "") : maskPhoneForRiderQueue(row.phone),
-    address: row.address || "N/A",
-    status: row.status,
-    assignedRiderId: row.assigned_rider_id || null,
-    subtotalCedis: Number(row.subtotal_cedis || 0),
-    commissionRatePercent,
-    commissionCedis: toCommissionCedis(row.subtotal_cedis, commissionRatePercent),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
+  return queueRows.map((row) => {
+    const paymentMethod = normalizePaymentMethod(row.payment_method, {
+      source: row.source,
+      deliveryType: "delivery",
+    });
+    const paymentStatusCode = normalizePaymentStatusCode(row.payment_status);
+    const requiresCollection = paymentMethod === PAYMENT_METHOD.CASH_ON_DELIVERY
+      && paymentStatusCode !== PAYMENT_STATUS.PAID;
+    return {
+      id: row.id,
+      orderNumber: row.order_number,
+      customerName: row.full_name,
+      customerPhoneMasked: maskPhoneForRiderQueue(row.phone),
+      customerPhone: includeSensitivePhone ? (row.phone || "") : maskPhoneForRiderQueue(row.phone),
+      address: row.address || "N/A",
+      status: row.status,
+      assignedRiderId: row.assigned_rider_id || null,
+      subtotalCedis: Number(row.subtotal_cedis || 0),
+      commissionRatePercent,
+      commissionCedis: toCommissionCedis(row.subtotal_cedis, commissionRatePercent),
+      paymentMethod,
+      paymentStatusCode,
+      paymentStatus: paymentStatusLabel(paymentStatusCode),
+      requiresCollection,
+      amountDueCedis: requiresCollection ? Number(row.subtotal_cedis || 0) : 0,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  });
 }
 
 async function assignOrderToRider({
@@ -1817,6 +1904,7 @@ module.exports = {
   getOrdersForAdmin,
   getOrderHistoryForAdmin,
   getRiderQueue,
+  markCashOnDeliveryCollected,
   assignOrderToRider,
   markOrderMonitored,
   ensureOrder,
