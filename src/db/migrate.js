@@ -388,6 +388,7 @@ async function runMigrations() {
     CREATE TABLE IF NOT EXISTS rider_referral_codes (
       id TEXT PRIMARY KEY,
       code TEXT NOT NULL UNIQUE,
+      rider_id TEXT,
       label TEXT,
       is_active INTEGER NOT NULL DEFAULT 1,
       max_uses INTEGER,
@@ -496,6 +497,7 @@ async function runMigrations() {
   await ensureColumn(db, "riders", "notes", "TEXT");
   await ensureColumn(db, "riders", "created_by_admin_id", "TEXT");
   await ensureColumn(db, "riders", "offboarded_at", "TEXT");
+  await ensureColumn(db, "rider_referral_codes", "rider_id", "TEXT");
   await ensureColumn(db, "menu_items", "ussd_short_name", "TEXT");
   await ensureColumn(db, "menu_items", "ussd_price_cedis", "REAL");
   await ensureColumn(db, "menu_items", "ussd_is_visible", "INTEGER NOT NULL DEFAULT 1");
@@ -525,6 +527,9 @@ async function runMigrations() {
   );
   await db.exec(
     "CREATE INDEX IF NOT EXISTS idx_rider_referral_codes_active ON rider_referral_codes(is_active, code);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_rider_referral_codes_rider ON rider_referral_codes(rider_id);",
   );
   await db.exec(
     "CREATE INDEX IF NOT EXISTS idx_rider_login_otps_phone_mode ON rider_login_otps(phone, rider_mode, created_at);",

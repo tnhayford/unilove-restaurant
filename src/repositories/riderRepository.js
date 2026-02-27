@@ -148,6 +148,7 @@ async function deleteRiderById(riderId) {
 async function purgeAllRiders() {
   const db = await getDb();
   const total = await db.get("SELECT COUNT(1) as total FROM riders");
+  await db.run("DELETE FROM rider_referral_codes");
   await db.run("DELETE FROM rider_devices");
   await db.run("DELETE FROM guest_rider_devices");
   await db.run("DELETE FROM rider_presence");
@@ -230,6 +231,7 @@ async function getRiderPerformanceStats(riderIds = []) {
 
 async function createReferralCode({
   code,
+  riderId,
   label = null,
   maxUses = null,
   isActive = true,
@@ -239,11 +241,12 @@ async function createReferralCode({
   const id = uuidv4();
   await db.run(
     `INSERT INTO rider_referral_codes (
-      id, code, label, is_active, max_uses, use_count, created_by_admin_id
-    ) VALUES (?, ?, ?, ?, ?, 0, ?)`,
+      id, code, rider_id, label, is_active, max_uses, use_count, created_by_admin_id
+    ) VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
     [
       id,
       String(code || "").trim().toUpperCase(),
+      String(riderId || "").trim() || null,
       label ? String(label).trim() : null,
       isActive ? 1 : 0,
       Number.isFinite(maxUses) ? Math.max(1, Math.floor(maxUses)) : null,
@@ -257,9 +260,13 @@ async function listReferralCodes(limit = 200) {
   const db = await getDb();
   const safeLimit = Math.max(1, Math.min(Number(limit || 200), 500));
   return db.all(
-    `SELECT id, code, label, is_active, max_uses, use_count, last_used_at, created_by_admin_id, created_at, updated_at
-     FROM rider_referral_codes
-     ORDER BY datetime(created_at) DESC
+    `SELECT rrc.id, rrc.code, rrc.rider_id, rrc.label, rrc.is_active, rrc.max_uses, rrc.use_count,
+            rrc.last_used_at, rrc.created_by_admin_id, rrc.created_at, rrc.updated_at,
+            r.full_name AS rider_full_name, r.phone AS rider_phone,
+            r.is_active AS rider_is_active, r.onboarding_status AS rider_onboarding_status
+     FROM rider_referral_codes rrc
+     LEFT JOIN riders r ON r.id = rrc.rider_id
+     ORDER BY datetime(rrc.created_at) DESC
      LIMIT ?`,
     [safeLimit],
   );
@@ -270,9 +277,13 @@ async function getReferralCodeByCode(code) {
   const normalized = String(code || "").trim().toUpperCase();
   if (!normalized) return null;
   return db.get(
-    `SELECT id, code, label, is_active, max_uses, use_count, last_used_at, created_by_admin_id, created_at, updated_at
-     FROM rider_referral_codes
-     WHERE code = ?`,
+    `SELECT rrc.id, rrc.code, rrc.rider_id, rrc.label, rrc.is_active, rrc.max_uses, rrc.use_count,
+            rrc.last_used_at, rrc.created_by_admin_id, rrc.created_at, rrc.updated_at,
+            r.full_name AS rider_full_name, r.phone AS rider_phone,
+            r.is_active AS rider_is_active, r.onboarding_status AS rider_onboarding_status
+     FROM rider_referral_codes rrc
+     LEFT JOIN riders r ON r.id = rrc.rider_id
+     WHERE rrc.code = ?`,
     [normalized],
   );
 }
@@ -280,25 +291,33 @@ async function getReferralCodeByCode(code) {
 async function getReferralCodeById(id) {
   const db = await getDb();
   return db.get(
-    `SELECT id, code, label, is_active, max_uses, use_count, last_used_at, created_by_admin_id, created_at, updated_at
-     FROM rider_referral_codes
-     WHERE id = ?`,
+    `SELECT rrc.id, rrc.code, rrc.rider_id, rrc.label, rrc.is_active, rrc.max_uses, rrc.use_count,
+            rrc.last_used_at, rrc.created_by_admin_id, rrc.created_at, rrc.updated_at,
+            r.full_name AS rider_full_name, r.phone AS rider_phone,
+            r.is_active AS rider_is_active, r.onboarding_status AS rider_onboarding_status
+     FROM rider_referral_codes rrc
+     LEFT JOIN riders r ON r.id = rrc.rider_id
+     WHERE rrc.id = ?`,
     [id],
   );
 }
 
-async function updateReferralCode({ id, label, maxUses, isActive }) {
+async function updateReferralCode({ id, riderId, label, maxUses, isActive }) {
   const db = await getDb();
   const existing = await getReferralCodeById(id);
   if (!existing) return null;
   await db.run(
     `UPDATE rider_referral_codes
-     SET label = ?,
+     SET rider_id = ?,
+         label = ?,
          max_uses = ?,
          is_active = ?,
          updated_at = datetime('now')
      WHERE id = ?`,
     [
+      Object.prototype.hasOwnProperty.call(arguments[0], "riderId")
+        ? (String(riderId || "").trim() || null)
+        : existing.rider_id,
       Object.prototype.hasOwnProperty.call(arguments[0], "label")
         ? (String(label || "").trim() || null)
         : existing.label,

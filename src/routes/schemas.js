@@ -325,18 +325,21 @@ const adminRiderUpdateSchema = z
   });
 
 const adminRiderReferralCreateSchema = z.object({
+  riderId: z.string().trim().min(2).max(120),
   label: z.string().trim().min(2).max(120).optional(),
   maxUses: z.number().int().min(1).max(100000).optional().nullable(),
 });
 
 const adminRiderReferralUpdateSchema = z
   .object({
+    riderId: z.string().trim().min(2).max(120).optional(),
     label: z.string().trim().min(2).max(120).optional(),
     maxUses: z.number().int().min(1).max(100000).optional().nullable(),
     isActive: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     if (
+      !Object.prototype.hasOwnProperty.call(value, "riderId") &&
       !Object.prototype.hasOwnProperty.call(value, "label") &&
       !Object.prototype.hasOwnProperty.call(value, "maxUses") &&
       !Object.prototype.hasOwnProperty.call(value, "isActive")

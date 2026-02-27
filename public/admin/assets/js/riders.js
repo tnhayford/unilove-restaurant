@@ -49,6 +49,32 @@ function renderModeBadge(row) {
     : badge("staff", "info");
 }
 
+function getEligibleReferralOwners() {
+  return riderRows.filter((row) => {
+    if (!isManagedStaff(row)) return false;
+    if (!row.isActive) return false;
+    return String(row.onboardingStatus || "").toLowerCase() === "onboarded";
+  });
+}
+
+function populateReferralOwnerSelect() {
+  const select = document.getElementById("referralRiderId");
+  if (!select) return;
+  const owners = getEligibleReferralOwners();
+  const previous = String(select.value || "").trim();
+  select.innerHTML = '<option value="">Select active rider</option>';
+  owners.forEach((row) => {
+    const option = document.createElement("option");
+    option.value = row.id;
+    option.textContent = `${row.fullName} (${row.phone || row.id})`;
+    select.appendChild(option);
+  });
+  if (previous && owners.some((row) => row.id === previous)) {
+    select.value = previous;
+  }
+  select.disabled = owners.length === 0;
+}
+
 function renderRiderRows() {
   const e = AdminCore.escapeHtml;
   const tbody = document.getElementById("riderBody");
@@ -172,15 +198,19 @@ function renderReferralRows() {
 
   if (!referralRows.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = '<td colspan="8" class="order-meta">No referral codes yet.</td>';
+    tr.innerHTML = '<td colspan="9" class="order-meta">No referral codes yet.</td>';
     tbody.appendChild(tr);
     return;
   }
 
   referralRows.forEach((row) => {
     const tr = document.createElement("tr");
+    const riderDisplay = row.riderName
+      ? `${row.riderName} (${row.riderPhone || row.riderId || "-"})`
+      : (row.riderId || "Unlinked rider");
     tr.innerHTML = `
       <td><code>${e(row.code)}</code></td>
+      <td>${e(riderDisplay)}</td>
       <td><input class="input" data-role="label" value="${e(row.label || "")}" /></td>
       <td>${row.isActive ? badge("active", "pickup") : badge("inactive", "warning")}</td>
       <td>${e(row.useCount || 0)}</td>
@@ -253,6 +283,7 @@ async function loadRiders() {
   const response = await AdminCore.api("/api/admin/riders/accounts");
   riderRows = response.data || [];
   renderRiderRows();
+  populateReferralOwnerSelect();
 }
 
 async function loadReferrals() {
@@ -313,14 +344,21 @@ async function loadReferrals() {
 
   document.getElementById("createReferralForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const riderId = document.getElementById("referralRiderId").value.trim();
     const label = document.getElementById("referralLabel").value.trim();
     const maxUsesRaw = document.getElementById("referralMaxUses").value.trim();
     const maxUses = maxUsesRaw ? Number(maxUsesRaw) : null;
+
+    if (!riderId) {
+      AdminLayout.setStatus("Select an active rider to generate referral code.", "error");
+      return;
+    }
 
     try {
       await AdminCore.api("/api/admin/riders/referrals", {
         method: "POST",
         body: JSON.stringify({
+          riderId,
           label: label || null,
           maxUses: Number.isFinite(maxUses) ? Math.floor(maxUses) : null,
         }),

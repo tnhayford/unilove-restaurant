@@ -1,4 +1,5 @@
 const {
+  getRiderById,
   getRiderByPhone,
   createRider,
   updateRiderProfile,
@@ -264,6 +265,11 @@ function toPublicReferral(row) {
   return {
     id: row.id,
     code: row.code,
+    riderId: row.rider_id || null,
+    riderName: row.rider_full_name || null,
+    riderPhone: row.rider_phone || null,
+    riderActive: Boolean(row.rider_is_active),
+    riderOnboardingStatus: row.rider_onboarding_status || null,
     label: row.label || null,
     isActive: Boolean(row.is_active),
     maxUses: row.max_uses == null ? null : Number(row.max_uses),
@@ -281,12 +287,21 @@ async function listRiderReferrals(req, res) {
 }
 
 async function createRiderReferral(req, res) {
+  const referralRider = await getRiderById(req.validatedBody.riderId);
+  if (!referralRider) {
+    return res.status(400).json({ error: "Referral rider does not exist" });
+  }
+  if (!referralRider.is_active || String(referralRider.onboarding_status || "").toLowerCase() === "offboarded") {
+    return res.status(400).json({ error: "Referral rider must be active and onboarded" });
+  }
+
   let created = null;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const code = generateReferralCode();
     try {
       created = await createReferralCode({
         code,
+        riderId: referralRider.id,
         label: req.validatedBody.label || null,
         maxUses: req.validatedBody.maxUses ?? null,
         isActive: true,
@@ -311,6 +326,7 @@ async function createRiderReferral(req, res) {
     entityId: created.id,
     details: {
       code: created.code,
+      riderId: created.rider_id || null,
       maxUses: created.max_uses,
       label: created.label || null,
     },
@@ -319,8 +335,21 @@ async function createRiderReferral(req, res) {
 }
 
 async function updateRiderReferral(req, res) {
+  let nextRiderId;
+  if (Object.prototype.hasOwnProperty.call(req.validatedBody, "riderId")) {
+    const referralRider = await getRiderById(req.validatedBody.riderId);
+    if (!referralRider) {
+      return res.status(400).json({ error: "Referral rider does not exist" });
+    }
+    if (!referralRider.is_active || String(referralRider.onboarding_status || "").toLowerCase() === "offboarded") {
+      return res.status(400).json({ error: "Referral rider must be active and onboarded" });
+    }
+    nextRiderId = referralRider.id;
+  }
+
   const updated = await updateReferralCode({
     id: req.params.referralId,
+    riderId: nextRiderId,
     label: req.validatedBody.label,
     maxUses: req.validatedBody.maxUses,
     isActive: req.validatedBody.isActive,
@@ -337,6 +366,7 @@ async function updateRiderReferral(req, res) {
     entityId: updated.id,
     details: {
       code: updated.code,
+      riderId: updated.rider_id || null,
       changedFields: Object.keys(req.validatedBody || {}),
     },
   });

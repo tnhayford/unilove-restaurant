@@ -66,6 +66,12 @@
             <h3>Guest Referral Codes</h3>
             <form id="createReferralForm" class="rider-form">
               <div>
+                <label>Referrer Rider</label>
+                <select id="referralRiderId" class="select" required>
+                  <option value="">Select active rider</option>
+                </select>
+              </div>
+              <div>
                 <label>Label</label>
                 <input id="referralLabel" class="input" placeholder="Weekend campaign" />
               </div>
@@ -115,6 +121,7 @@
             <thead>
               <tr>
                 <th>Code</th>
+                <th>Referrer Rider</th>
                 <th>Label</th>
                 <th>Status</th>
                 <th>Use Count</th>

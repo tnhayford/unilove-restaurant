@@ -65,11 +65,34 @@ async function seedMenuItem() {
 
 async function seedReferralCode(code = "UNIREF10", maxUses = null) {
   const db = await getDbHandle();
+  const riderId = `rdr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  await db.run(
+    `INSERT INTO riders (id, full_name, phone, pin_hash, is_active, onboarding_status)
+     VALUES (?, ?, ?, ?, 1, 'onboarded')`,
+    [
+      riderId,
+      "Referral Owner Rider",
+      `024${Math.floor(1000000 + Math.random() * 8999999)}`,
+      "OTP_ONLY",
+    ],
+  );
+
   const id = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   await db.run(
-    `INSERT INTO rider_referral_codes (id, code, label, is_active, max_uses, use_count)
-     VALUES (?, ?, ?, 1, ?, 0)`,
-    [id, code, "Test Referral", maxUses],
+    `INSERT INTO rider_referral_codes (id, code, rider_id, label, is_active, max_uses, use_count)
+     VALUES (?, ?, ?, ?, 1, ?, 0)`,
+    [id, code, riderId, "Test Referral", maxUses],
+  );
+  return { id, code, riderId };
+}
+
+async function seedUnlinkedReferralCode(code = "UNIREFLEGACY") {
+  const db = await getDbHandle();
+  const id = `ref-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  await db.run(
+    `INSERT INTO rider_referral_codes (id, code, rider_id, label, is_active, max_uses, use_count)
+     VALUES (?, ?, NULL, ?, 1, NULL, 0)`,
+    [id, code, "Legacy Referral"],
   );
   return { id, code };
 }
@@ -318,6 +341,20 @@ describe("Security hardening integration", () => {
     expect(loginRes.status).toBe(200);
     expect(loginRes.body?.data?.token).toBeTruthy();
     expect(loginRes.body?.data?.rider?.mode).toBe("guest");
+  });
+
+  it("rejects guest OTP request for referral not linked to a rider", async () => {
+    if (!canRunHttpTests) return;
+    const seeded = await seedUnlinkedReferralCode("UNIREFLEGACY9");
+
+    const response = await request.post("/api/rider/auth/request-otp").send({
+      mode: "guest",
+      phone: "0240009222",
+      riderName: "Guest Legacy",
+      referralCode: seeded.code,
+    });
+    expect(response.status).toBe(403);
+    expect(response.body?.error).toMatch(/not linked to a rider/i);
   });
 
   it("blocks COD OTP verification until rider confirms collection", async () => {

@@ -170,6 +170,15 @@ async function validateGuestReferralCode(inputCode) {
   if (!code || !code.is_active) {
     throw Object.assign(new Error("Referral code is invalid or inactive"), { statusCode: 403 });
   }
+  const referralRiderId = String(code.rider_id || "").trim();
+  if (!referralRiderId) {
+    throw Object.assign(new Error("Referral code is not linked to a rider"), { statusCode: 403 });
+  }
+  const referralRiderActive = Boolean(code.rider_is_active);
+  const referralRiderOnboarding = String(code.rider_onboarding_status || "").trim().toLowerCase();
+  if (!referralRiderActive || referralRiderOnboarding === "offboarded") {
+    throw Object.assign(new Error("Referral rider is inactive or offboarded"), { statusCode: 403 });
+  }
   if (Number.isFinite(code.max_uses) && Number(code.max_uses) > 0 && Number(code.use_count) >= Number(code.max_uses)) {
     throw Object.assign(new Error("Referral code has reached its usage limit"), { statusCode: 403 });
   }
