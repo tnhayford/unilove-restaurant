@@ -4,7 +4,7 @@ const AdminCore = (() => {
   const SETTINGS_KEY = "admin_settings_v1";
   const DEFAULT_SETTINGS = {
     alertEnabled: true,
-    alertVolume: 0.75,
+    alertVolume: 1,
     alertTone: "ops_default",
     alertIntervalMs: 1400,
     autoRefreshMs: 6000,

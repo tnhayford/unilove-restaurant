@@ -15,6 +15,10 @@
     "setup": "npm run migrate && npm run seed:menu && npm run seed:admin",
     "backdate:sample": "node scripts/backdateSampleOrders.js",
     "simulate:incoming": "node scripts/simulatePaidIncomingOrder.js",
+    "logs:ussd": "node scripts/generateUssdLogs.js",
+    "logs:hubtel:clear": "sh -c 'FILE=${HUBTEL_LIVE_LOG_FILE:-./data/hubtel-live.log}; mkdir -p \"$(dirname \"$FILE\")\"; : > \"$FILE\"'",
+    "logs:hubtel:last": "sh -c 'FILE=${HUBTEL_LIVE_LOG_FILE:-./data/hubtel-live.log}; mkdir -p \"$(dirname \"$FILE\")\"; test -f \"$FILE\" || : > \"$FILE\"; tail -n 200 \"$FILE\"'",
+    "logs:hubtel:tail": "sh -c 'FILE=${HUBTEL_LIVE_LOG_FILE:-./data/hubtel-live.log}; mkdir -p \"$(dirname \"$FILE\")\"; test -f \"$FILE\" || : > \"$FILE\"; tail -f \"$FILE\"'",
     "db:export:postgres": "node scripts/exportPostgresBundle.js",
     "snapshot:state": "bash scripts/snapshot_state.sh",
     "test": "vitest run"

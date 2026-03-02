@@ -29,6 +29,11 @@ module.exports = {
   hubtelSmsClientId: process.env.HUBTEL_SMS_CLIENT_ID || "",
   hubtelSmsClientSecret: process.env.HUBTEL_SMS_CLIENT_SECRET || "",
   hubtelSmsFrom: process.env.HUBTEL_SMS_FROM || "Restaurant",
+  hubtelLiveLogEnabled: process.env.HUBTEL_LIVE_LOG_ENABLED !== "false",
+  hubtelLiveLogFile: process.env.HUBTEL_LIVE_LOG_FILE || "./data/hubtel-live.log",
+  hubtelLiveLogRedactSensitive:
+    process.env.HUBTEL_LIVE_LOG_REDACT_SENSITIVE !== "false",
+  hubtelLiveLogMaskPhone: process.env.HUBTEL_LIVE_LOG_MASK_PHONE === "true",
   hubtelTxnStatusBaseUrl:
     process.env.HUBTEL_TXN_STATUS_BASE_URL ||
     "https://api-txnstatus.hubtel.com",

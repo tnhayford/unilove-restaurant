@@ -2,6 +2,7 @@ const axios = require("axios");
 const env = require("../config/env");
 const { getOrderById } = require("../repositories/orderRepository");
 const { logSensitiveAction } = require("./auditService");
+const { logHubtelEvent } = require("./hubtelLiveLogService");
 
 const ALLOWED_CHANNELS = new Set(["mtn-gh", "vodafone-gh", "tigo-gh"]);
 const CHANNEL_LABEL = {
@@ -177,6 +178,22 @@ async function verifyInStoreCustomerWallet({
     `/merchantaccount/merchants/${env.hubtelPosSalesId}/mobilemoney/verify`;
 
   try {
+    logHubtelEvent("HUBTEL_VERIFY_MOMO_REQUEST_OUT", {
+      method: "GET",
+      url,
+      query: { channel, customerMsisdn: normalizedPhone },
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: buildAuthHeader(verificationAuth),
+      },
+      context: {
+        entityType,
+        entityId: entityId || null,
+        adminId: adminId || null,
+      },
+    });
+
     const response = await axios.get(url, {
       params: { channel, customerMsisdn: normalizedPhone },
       headers: {
@@ -185,6 +202,19 @@ async function verifyInStoreCustomerWallet({
         Authorization: buildAuthHeader(verificationAuth),
       },
       timeout: 10000,
+    });
+
+    logHubtelEvent("HUBTEL_VERIFY_MOMO_RESPONSE_OK", {
+      method: "GET",
+      url,
+      query: { channel, customerMsisdn: normalizedPhone },
+      statusCode: response.status,
+      body: response.data || null,
+      context: {
+        entityType,
+        entityId: entityId || null,
+        adminId: adminId || null,
+      },
     });
 
     const verificationData = response.data?.data || null;
@@ -235,6 +265,20 @@ async function verifyInStoreCustomerWallet({
       phone: normalizedPhone,
     };
   } catch (error) {
+    logHubtelEvent("HUBTEL_VERIFY_MOMO_RESPONSE_ERR", {
+      method: "GET",
+      url,
+      query: { channel, customerMsisdn: normalizedPhone },
+      statusCode: error.response?.status || null,
+      error: error.message,
+      body: error.response?.data || null,
+      context: {
+        entityType,
+        entityId: entityId || null,
+        adminId: adminId || null,
+      },
+    });
+
     if (error.statusCode) {
       throw error;
     }
@@ -322,6 +366,15 @@ async function requestInStoreMomoPrompt({
   };
 
   if (!canUseLiveReceiveMoney()) {
+    logHubtelEvent("HUBTEL_RECEIVE_MONEY_SKIPPED", {
+      reason: "missing_receive_money_configuration",
+      channel,
+      orderId: order.id,
+      orderNumber: order.order_number,
+      clientReference: order.client_reference,
+      payload,
+    });
+
     await logSensitiveAction({
       actorType: "admin",
       actorId: adminId || null,
@@ -345,6 +398,24 @@ async function requestInStoreMomoPrompt({
 
   try {
     const url = `${String(env.hubtelReceiveMoneyBaseUrl).replace(/\/$/, "")}/merchantaccount/merchants/${env.hubtelPosSalesId}/receive/mobilemoney`;
+    logHubtelEvent("HUBTEL_RECEIVE_MONEY_REQUEST_OUT", {
+      method: "POST",
+      url,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: buildAuthHeader(env.hubtelReceiveMoneyBasicAuth),
+      },
+      body: payload,
+      context: {
+        channel,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        clientReference: order.client_reference,
+        adminId: adminId || null,
+      },
+    });
+
     const response = await axios.post(url, payload, {
       headers: {
         "Content-Type": "application/json",
@@ -352,6 +423,20 @@ async function requestInStoreMomoPrompt({
         Authorization: buildAuthHeader(env.hubtelReceiveMoneyBasicAuth),
       },
       timeout: 10000,
+    });
+
+    logHubtelEvent("HUBTEL_RECEIVE_MONEY_RESPONSE_OK", {
+      method: "POST",
+      url,
+      statusCode: response.status,
+      body: response.data || null,
+      context: {
+        channel,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        clientReference: order.client_reference,
+        adminId: adminId || null,
+      },
     });
 
     await logSensitiveAction({
@@ -393,6 +478,24 @@ async function requestInStoreMomoPrompt({
     const providerMessage = extractProviderMessage(error);
     const mapped = toFriendlyPromptFailure(providerMessage, channel);
 
+    logHubtelEvent("HUBTEL_RECEIVE_MONEY_RESPONSE_ERR", {
+      method: "POST",
+      url: `${String(env.hubtelReceiveMoneyBaseUrl).replace(/\/$/, "")}/merchantaccount/merchants/${env.hubtelPosSalesId}/receive/mobilemoney`,
+      statusCode: error.response?.status || null,
+      error: error.message,
+      providerMessage: providerMessage || null,
+      body: error.response?.data || null,
+      mappedStatusCode: mapped.statusCode,
+      mappedMessage: mapped.message,
+      context: {
+        channel,
+        orderId: order.id,
+        orderNumber: order.order_number,
+        clientReference: order.client_reference,
+        adminId: adminId || null,
+      },
+    });
+
     await logSensitiveAction({
       actorType: "admin",
       actorId: adminId || null,
@@ -415,6 +518,12 @@ async function requestInStoreMomoPrompt({
 
 async function requestUssdMomoPrompt({ orderId, phone }) {
   const channel = inferMomoChannelFromPhone(phone);
+  logHubtelEvent("USSD_MOMO_PROMPT_REQUESTED", {
+    orderId,
+    phone,
+    inferredChannel: channel || null,
+  });
+
   if (!channel) {
     throw Object.assign(
       new Error("Unable to detect MoMo network from phone number."),
@@ -444,8 +553,24 @@ async function requestUssdMomoPrompt({ orderId, phone }) {
       },
     });
 
+    logHubtelEvent("USSD_MOMO_PROMPT_RESULT", {
+      orderId,
+      channel,
+      initiated: Boolean(result.initiated),
+      simulated: Boolean(result.simulated),
+      responseCode: result.responseCode || null,
+      message: result.message || null,
+    });
+
     return { ...result, channel };
   } catch (error) {
+    logHubtelEvent("USSD_MOMO_PROMPT_ERROR", {
+      orderId,
+      channel,
+      error: error.message,
+      statusCode: error.statusCode || null,
+    });
+
     await logSensitiveAction({
       actorType: "system",
       actorId: null,

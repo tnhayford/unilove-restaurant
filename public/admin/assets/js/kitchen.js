@@ -6,11 +6,18 @@ const state = {
   refreshTimerId: null,
   alertIntervalId: null,
   alertAudio: null,
+  csrfToken: "",
 };
 
 function getAdminLayoutApi() {
   if (typeof AdminLayout !== "undefined" && AdminLayout) return AdminLayout;
   if (typeof window !== "undefined" && window.AdminLayout) return window.AdminLayout;
+  return null;
+}
+
+function getAdminCoreApi() {
+  if (typeof AdminCore !== "undefined" && AdminCore) return AdminCore;
+  if (typeof window !== "undefined" && window.AdminCore) return window.AdminCore;
   return null;
 }
 
@@ -56,30 +63,82 @@ function normalizeOrder(raw) {
 }
 
 async function apiGet(path) {
-  if (window.AdminCore && typeof window.AdminCore.api === "function") {
-    return window.AdminCore.api(path);
-  }
-  throw new Error("Admin API bootstrap unavailable");
+  return apiRequest(path, { method: "GET" });
 }
 
 async function apiMutate(path, { method = "POST", body = {} } = {}) {
-  if (window.AdminCore && typeof window.AdminCore.api === "function") {
-    return window.AdminCore.api(path, {
-      method,
-      body: JSON.stringify(body || {}),
-    });
+  return apiRequest(path, { method, body });
+}
+
+async function apiRequest(path, { method = "GET", body = null } = {}) {
+  const normalizedMethod = String(method || "GET").trim().toUpperCase() || "GET";
+  const isMutating = ["POST", "PUT", "PATCH", "DELETE"].includes(normalizedMethod);
+
+  const coreApi = getAdminCoreApi();
+  if (coreApi && typeof coreApi.api === "function") {
+    const options = { method: normalizedMethod };
+    if (isMutating) {
+      options.body = JSON.stringify(body || {});
+    }
+    return coreApi.api(path, options);
   }
-  throw new Error("Admin API bootstrap unavailable");
+
+  const headers = {};
+  if (isMutating) {
+    const csrfToken = await fetchCsrfTokenFallback();
+    headers["x-csrf-token"] = csrfToken;
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(path, {
+    method: normalizedMethod,
+    credentials: "include",
+    cache: isMutating ? "default" : "no-store",
+    headers,
+    body: isMutating ? JSON.stringify(body || {}) : undefined,
+  });
+
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch (_error) {
+    payload = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(payload.error || `Request failed (${response.status})`);
+  }
+
+  return payload;
+}
+
+async function fetchCsrfTokenFallback() {
+  if (state.csrfToken) return state.csrfToken;
+  const response = await fetch("/api/admin/auth/csrf-token", {
+    credentials: "include",
+  });
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch (_error) {
+    payload = {};
+  }
+  if (!response.ok || !payload.csrfToken) {
+    throw new Error(payload.error || "Unable to initialize CSRF token");
+  }
+  state.csrfToken = payload.csrfToken;
+  return state.csrfToken;
 }
 
 function alertSettings() {
-  const settings = (window.AdminCore && typeof window.AdminCore.getSettings === "function")
-    ? window.AdminCore.getSettings()
+  const coreApi = getAdminCoreApi();
+  const settings = (coreApi && typeof coreApi.getSettings === "function")
+    ? coreApi.getSettings()
     : {};
   return {
     enabled: settings.alertEnabled !== false,
     intervalMs: Math.max(700, Number(settings.alertIntervalMs || 1400)),
-    volume: Math.max(0, Math.min(1, Number(settings.alertVolume ?? 0.75))),
+    volume: Math.max(0.9, Math.min(1, Number(settings.alertVolume ?? 1))),
   };
 }
 
@@ -113,8 +172,7 @@ function isKitchenAlertCandidate(order) {
   const isPaidOrCollectable = isCod
     ? order.paymentStatus !== "FAILED"
     : order.paymentStatus === "PAID";
-  if (!isPaidOrCollectable) return false;
-  return !String(order.opsMonitoredAt || "").trim();
+  return isPaidOrCollectable;
 }
 
 function paymentMethodLabel(value) {

@@ -16,6 +16,7 @@ const {
 } = require("./orderService");
 const { ORDER_STATUS } = require("../utils/orderStatus");
 const { logSensitiveAction } = require("./auditService");
+const { logHubtelEvent } = require("./hubtelLiveLogService");
 
 function normalizeCallbackPayload(payload) {
   const hintedSource = String(payload?.Meta?.source || payload?.meta?.source || "")
@@ -167,8 +168,17 @@ async function applyFailedPayment(order, normalized) {
 }
 
 async function processHubtelCallback(payload) {
+  logHubtelEvent("HUBTEL_CALLBACK_PROCESS_START", {
+    body: payload || null,
+  });
+
   const normalized = normalizeCallbackPayload(payload);
   if (!normalized) {
+    logHubtelEvent("HUBTEL_CALLBACK_PROCESS_ERROR", {
+      reason: "unsupported_payload_shape",
+      bodyKeys: Object.keys(payload || {}),
+    });
+
     await logSensitiveAction({
       actorType: "system",
       actorId: null,
@@ -186,6 +196,12 @@ async function processHubtelCallback(payload) {
 
   const order = await resolveOrderByCallback(normalized);
   if (!order) {
+    logHubtelEvent("HUBTEL_CALLBACK_PROCESS_ERROR", {
+      reason: "order_not_found",
+      clientReference: normalized.clientReference || null,
+      sessionId: normalized.sessionId || null,
+      source: normalized.source || null,
+    });
     throw Object.assign(new Error("No order matches callback reference"), {
       statusCode: 404,
     });
@@ -207,6 +223,14 @@ async function processHubtelCallback(payload) {
         source: normalized.source,
         responseCode: normalized.responseCode,
       },
+    });
+    logHubtelEvent("HUBTEL_CALLBACK_PROCESS_IGNORED", {
+      orderId: order.id,
+      orderNumber: order.order_number || null,
+      clientReference: order.client_reference || null,
+      reason: "ambiguous_status_check_failure",
+      responseCode: normalized.responseCode || null,
+      source: normalized.source || null,
     });
     return {
       orderId: order.id,
@@ -253,6 +277,15 @@ async function processHubtelCallback(payload) {
       },
     });
 
+    logHubtelEvent("HUBTEL_CALLBACK_PROCESS_IGNORED", {
+      orderId: order.id,
+      orderNumber: order.order_number || null,
+      clientReference: order.client_reference || null,
+      reason: "stale_failure_callback",
+      responseCode: normalized.responseCode || null,
+      source: normalized.source || null,
+    });
+
     return {
       orderId: order.id,
       status: latestPayment?.status || order.status || "PENDING",
@@ -294,6 +327,16 @@ async function processHubtelCallback(payload) {
     },
   });
 
+  logHubtelEvent("HUBTEL_CALLBACK_PROCESS_DONE", {
+    orderId: order.id,
+    orderNumber: order.order_number || null,
+    clientReference: order.client_reference || null,
+    success: normalized.success,
+    responseCode: normalized.responseCode || null,
+    source: normalized.source || null,
+    nextStatus: normalized.success ? "PAID" : "FAILED",
+  });
+
   return {
     orderId: order.id,
     status: normalized.success ? "PAID" : "FAILED",
@@ -304,6 +347,10 @@ async function processHubtelCallback(payload) {
 
 async function checkTransactionStatus(clientReference) {
   if (!env.hubtelTxnStatusBasicAuth || !env.hubtelPosSalesId) {
+    logHubtelEvent("HUBTEL_STATUS_CHECK_SKIPPED", {
+      clientReference,
+      reason: "missing_status_check_configuration",
+    });
     return {
       skipped: true,
       reason: "missing_status_check_configuration",
@@ -315,13 +362,44 @@ async function checkTransactionStatus(clientReference) {
     : `Basic ${env.hubtelTxnStatusBasicAuth}`;
 
   const url = `${env.hubtelTxnStatusBaseUrl}/transactions/${env.hubtelPosSalesId}/status`;
-  const response = await axios.get(url, {
-    params: { clientReference },
+  logHubtelEvent("HUBTEL_STATUS_CHECK_REQUEST_OUT", {
+    method: "GET",
+    url,
+    query: { clientReference },
     headers: {
       Authorization: authHeader,
       Accept: "application/json",
     },
-    timeout: 10000,
+  });
+
+  let response;
+  try {
+    response = await axios.get(url, {
+      params: { clientReference },
+      headers: {
+        Authorization: authHeader,
+        Accept: "application/json",
+      },
+      timeout: 10000,
+    });
+  } catch (error) {
+    logHubtelEvent("HUBTEL_STATUS_CHECK_RESPONSE_ERR", {
+      method: "GET",
+      url,
+      query: { clientReference },
+      statusCode: error?.response?.status || null,
+      error: error?.message || "status_check_failed",
+      body: error?.response?.data || null,
+    });
+    throw error;
+  }
+
+  logHubtelEvent("HUBTEL_STATUS_CHECK_RESPONSE_OK", {
+    method: "GET",
+    url,
+    query: { clientReference },
+    statusCode: response.status,
+    body: response.data || null,
   });
 
   return {

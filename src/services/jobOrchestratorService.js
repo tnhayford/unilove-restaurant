@@ -71,11 +71,7 @@ async function runTask(taskName, payload = null) {
       maxAgeMinutes: Number(payload?.maxAgeMinutes || env.fastPromptReconcileMaxAgeMinutes),
       limit: Number(payload?.limit || env.fastPromptReconcileLimit),
     });
-    const pending = await reconcilePendingPayments({
-      minAgeMinutes: 1,
-      limit: 120,
-    });
-    return { prompt, pending };
+    return { prompt };
   }
   if (taskName === "report_schedule_tick") {
     return runReportScheduleTick();

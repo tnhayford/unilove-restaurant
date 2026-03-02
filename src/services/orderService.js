@@ -45,6 +45,7 @@ const { shouldSendCustomerSms } = require("./operationsPolicyService");
 const { assignDeliveryOrdersByWorkload } = require("./riderAssignmentService");
 const { listRiderRoster, listActiveAssignableRiders } = require("./riderPresenceService");
 const { publishOrderEvent } = require("./realtimeEventService");
+const { logHubtelEvent } = require("./hubtelLiveLogService");
 
 const ORDER_ACTION = {
   START_PROCESSING: "START_PROCESSING",
@@ -1601,13 +1602,38 @@ async function createInStoreOrder({
 
 async function checkInStoreMomoPaymentStatus({ orderId, adminId }) {
   const order = await ensureOrder(orderId);
+  logHubtelEvent("INSTORE_STATUS_CHECK_REQUESTED", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    clientReference: order.client_reference || null,
+    status: order.status,
+    paymentMethod: order.payment_method,
+    source: order.source,
+    adminId: adminId || null,
+  });
+
   if (order.source !== "instore" || order.payment_method !== "momo") {
+    logHubtelEvent("INSTORE_STATUS_CHECK_REJECTED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      reason: "not_instore_momo_order",
+      status: order.status,
+      paymentMethod: order.payment_method,
+      source: order.source,
+      adminId: adminId || null,
+    });
     throw Object.assign(
       new Error("Only in-store MoMo orders support manual status checks"),
       { statusCode: 400 },
     );
   }
   if (!order.client_reference) {
+    logHubtelEvent("INSTORE_STATUS_CHECK_REJECTED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      reason: "missing_client_reference",
+      adminId: adminId || null,
+    });
     throw Object.assign(new Error("Missing order client reference for status check"), {
       statusCode: 400,
     });
@@ -1630,6 +1656,17 @@ async function checkInStoreMomoPaymentStatus({ orderId, adminId }) {
         providerOutcome: "skipped",
       },
     });
+    logHubtelEvent("INSTORE_STATUS_CHECK_COMPLETED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      clientReference: order.client_reference,
+      skipped: true,
+      reason: statusResult.reason || "status_check_skipped",
+      paid,
+      providerOutcome: "skipped",
+      adminId: adminId || null,
+    });
+
     return {
       order: currentOrder,
       skipped: true,
@@ -1732,6 +1769,21 @@ async function checkInStoreMomoPaymentStatus({ orderId, adminId }) {
     },
   });
 
+  logHubtelEvent("INSTORE_STATUS_CHECK_COMPLETED", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    clientReference: order.client_reference,
+    skipped: false,
+    paid,
+    responseCode: classification.responseCode || null,
+    providerStatus: classification.providerStatus || null,
+    providerOutcome,
+    ignored: Boolean(callbackResult?.ignored),
+    ignoreReason: callbackResult?.ignoreReason || null,
+    failureHint: failureHint || null,
+    adminId: adminId || null,
+  });
+
   return {
     order: refreshedOrder,
     skipped: false,
@@ -1793,8 +1845,27 @@ async function retryInStoreMomoPrompt({
   adminId,
 }) {
   let order = await ensureOrder(orderId);
+  logHubtelEvent("INSTORE_PAYMENT_RETRY_REQUESTED", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    clientReference: order.client_reference || null,
+    status: order.status,
+    paymentMethod: order.payment_method,
+    source: order.source,
+    paymentChannel: paymentChannel || null,
+    adminId: adminId || null,
+  });
 
   if (order.source !== "instore" || order.payment_method !== "momo") {
+    logHubtelEvent("INSTORE_PAYMENT_RETRY_REJECTED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      reason: "not_instore_momo_order",
+      status: order.status,
+      paymentMethod: order.payment_method,
+      source: order.source,
+      adminId: adminId || null,
+    });
     throw Object.assign(
       new Error("Only in-store MoMo orders can retry payment prompts"),
       { statusCode: 400 },
@@ -1802,6 +1873,12 @@ async function retryInStoreMomoPrompt({
   }
 
   if (!paymentChannel) {
+    logHubtelEvent("INSTORE_PAYMENT_RETRY_REJECTED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      reason: "missing_payment_channel",
+      adminId: adminId || null,
+    });
     throw Object.assign(new Error("paymentChannel is required for MoMo prompt retry"), {
       statusCode: 400,
     });
@@ -1810,6 +1887,13 @@ async function retryInStoreMomoPrompt({
   order = await reconcileInStoreOrderBeforeRetry(order, adminId);
 
   if (INSTORE_PAID_OR_PROGRESS_STATUSES.has(order.status)) {
+    logHubtelEvent("INSTORE_PAYMENT_RETRY_REJECTED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      reason: "already_paid_or_progress",
+      status: order.status,
+      adminId: adminId || null,
+    });
     throw Object.assign(
       new Error(`Order ${order.order_number} is already paid (${order.status}). Retry blocked.`),
       { statusCode: 409 },
@@ -1821,6 +1905,13 @@ async function retryInStoreMomoPrompt({
     ORDER_STATUS.PAYMENT_FAILED,
   ]);
   if (!retryableStatuses.has(order.status)) {
+    logHubtelEvent("INSTORE_PAYMENT_RETRY_REJECTED", {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      reason: "status_not_retryable",
+      status: order.status,
+      adminId: adminId || null,
+    });
     throw Object.assign(
       new Error(`Cannot retry payment prompt when order status is ${order.status}`),
       { statusCode: 400 },
@@ -1833,6 +1924,14 @@ async function retryInStoreMomoPrompt({
       const elapsedMs = Date.now() - updatedAt.getTime();
       if (elapsedMs < INSTORE_PENDING_RETRY_COOLDOWN_MS) {
         const waitSeconds = Math.ceil((INSTORE_PENDING_RETRY_COOLDOWN_MS - elapsedMs) / 1000);
+        logHubtelEvent("INSTORE_PAYMENT_RETRY_REJECTED", {
+          orderId: order.id,
+          orderNumber: order.order_number,
+          reason: "cooldown_active",
+          waitSeconds,
+          status: order.status,
+          adminId: adminId || null,
+        });
         throw Object.assign(
           new Error(
             `Prompt is still active for ${order.order_number}. Retry allowed in ${waitSeconds}s.`,
@@ -1883,6 +1982,23 @@ async function retryInStoreMomoPrompt({
   });
 
   const orderDetails = await getOrderDetails(order.id);
+  logHubtelEvent("INSTORE_PAYMENT_RETRY_COMPLETED", {
+    orderId: order.id,
+    orderNumber: order.order_number,
+    clientReference: order.client_reference || null,
+    previousStatus: order.status,
+    nextStatus: orderDetails.status,
+    paymentChannel,
+    prompt: {
+      initiated: Boolean(paymentPrompt.initiated),
+      simulated: Boolean(paymentPrompt.simulated),
+      responseCode: paymentPrompt.responseCode || null,
+      transactionId: paymentPrompt.transactionId || null,
+      externalTransactionId: paymentPrompt.externalTransactionId || null,
+    },
+    adminId: adminId || null,
+  });
+
   return {
     order: orderDetails,
     paymentPrompt,

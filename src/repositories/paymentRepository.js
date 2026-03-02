@@ -197,7 +197,7 @@ async function listActivePromptAttemptOrders({
      JOIN orders o ON o.id = a.order_id
      WHERE a.attempt_status = 'PENDING'
        AND datetime(a.created_at) >= datetime('now', ?)
-       AND o.source = 'instore'
+       AND o.source IN ('instore', 'ussd')
        AND o.payment_method = 'momo'
        AND o.status IN ('PENDING_PAYMENT', 'PAYMENT_FAILED')
      GROUP BY o.id, o.client_reference, o.status

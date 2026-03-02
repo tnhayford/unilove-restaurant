@@ -126,7 +126,7 @@ function alertSettings() {
     enabled: settings.alertEnabled !== false,
     tone: normalizedTone || "ops_default",
     intervalMs: Math.max(700, Number(settings.alertIntervalMs || 1400)),
-    volume: Math.max(0, Math.min(1, Number(settings.alertVolume ?? 0.75))),
+    volume: Math.max(0.9, Math.min(1, Number(settings.alertVolume ?? 1))),
   };
 }
 
@@ -171,6 +171,8 @@ function ensureIncomingOrderAlertAudio(tone) {
 function isAlertCandidateOrder(order) {
   if (!order) return false;
   if (normalizeStatus(order.status) !== "PAID") return false;
+  const source = String(order.source || "").trim().toLowerCase();
+  if (source === "instore") return false;
   const paymentMethod = String(order.paymentMethod || "momo").trim().toLowerCase();
   const paymentStatus = String(order.paymentStatus || "PENDING").trim().toUpperCase();
   const isCod = paymentMethod === "cash_on_delivery";
