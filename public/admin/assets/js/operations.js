@@ -334,6 +334,33 @@ function normalizeOrder(raw) {
   const deliveryType = String(raw.delivery_type || raw.deliveryType || "pickup").toLowerCase();
   const paymentMethod = String(raw.payment_method || raw.paymentMethod || "momo").trim().toLowerCase() || "momo";
   const paymentStatus = String(raw.payment_status || raw.paymentStatus || "PENDING").trim().toUpperCase() || "PENDING";
+  const cashierLabel = String(
+    raw.cashier_admin_name ||
+    raw.cashierAdminName ||
+    raw.cashier_admin_email ||
+    raw.cashierAdminEmail ||
+    raw.cashier_admin_id ||
+    raw.cashierAdminId ||
+    "",
+  ).trim();
+  const kitchenAcceptedLabel = String(
+    raw.kitchen_accepted_admin_name ||
+    raw.kitchenAcceptedAdminName ||
+    raw.kitchen_accepted_admin_email ||
+    raw.kitchenAcceptedAdminEmail ||
+    raw.kitchen_accepted_by_admin_id ||
+    raw.kitchenAcceptedByAdminId ||
+    "",
+  ).trim();
+  const kitchenReadyLabel = String(
+    raw.kitchen_ready_admin_name ||
+    raw.kitchenReadyAdminName ||
+    raw.kitchen_ready_admin_email ||
+    raw.kitchenReadyAdminEmail ||
+    raw.kitchen_ready_by_admin_id ||
+    raw.kitchenReadyByAdminId ||
+    "",
+  ).trim();
   return {
     id: String(raw.id || ""),
     orderNumber: String(raw.order_number || raw.orderNumber || "-").trim(),
@@ -357,6 +384,9 @@ function normalizeOrder(raw) {
     opsMonitoredAt: raw.ops_monitored_at || raw.opsMonitoredAt || null,
     paymentConfirmedAt: raw.payment_confirmed_at || raw.paymentConfirmedAt || null,
     availableActions: Array.isArray(raw.availableActions) ? raw.availableActions : [],
+    cashierLabel: cashierLabel || "Unassigned",
+    kitchenAcceptedLabel: kitchenAcceptedLabel || "Pending",
+    kitchenReadyLabel: kitchenReadyLabel || "Pending",
   };
 }
 
@@ -522,6 +552,9 @@ function renderOrderCard(order) {
         <div class="order-meta">Assigned rider: ${escapeHtml(assignedLabel)}</div>
         <div class="order-meta">Source: ${escapeHtml(order.source || "online")}</div>
         <div class="order-meta">Payment: ${escapeHtml(paymentLabel)}</div>
+        <div class="order-meta">Cashier: ${escapeHtml(order.cashierLabel || "Unassigned")}</div>
+        <div class="order-meta">Kitchen accepted: ${escapeHtml(order.kitchenAcceptedLabel || "Pending")}</div>
+        <div class="order-meta">Kitchen ready: ${escapeHtml(order.kitchenReadyLabel || "Pending")}</div>
         <div class="order-actions-row" style="margin-top: 8px;">
           <button
             type="button"

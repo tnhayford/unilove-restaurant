@@ -10,6 +10,7 @@ const ACTIONS = [
   "menu.view",
   "menu.edit",
   "analytics.view",
+  "finance.view",
   "logs.view",
   "staff.manage",
   "settings.store",
@@ -32,6 +33,7 @@ const STAFF_DEFAULTS = {
   "menu.view": true,
   "menu.edit": true,
   "analytics.view": false,
+  "finance.view": false,
   "logs.view": false,
   "staff.manage": false,
   "settings.store": false,
@@ -50,6 +52,7 @@ const CASHIER_DEFAULTS = {
   "incidents.manage": false,
   "disputes.manage": false,
   "analytics.view": false,
+  "finance.view": true,
   "logs.view": false,
   "reports.generate": false,
   "reports.download": false,
@@ -69,6 +72,7 @@ const KITCHEN_DEFAULTS = {
   "menu.view": false,
   "menu.edit": false,
   "analytics.view": false,
+  "finance.view": false,
   "logs.view": false,
   "staff.manage": false,
   "settings.store": false,
@@ -91,6 +95,7 @@ const MANAGER_DEFAULTS = {
   "menu.view": true,
   "menu.edit": true,
   "analytics.view": true,
+  "finance.view": true,
   "logs.view": true,
   "staff.manage": false,
   "settings.store": true,
@@ -126,6 +131,9 @@ function applyPermissionDependencies(input = {}) {
     normalized["reports.generate"] = true;
   }
   if (normalized["payments.reconcile"]) {
+    normalized["orders.view"] = true;
+  }
+  if (normalized["finance.view"]) {
     normalized["orders.view"] = true;
   }
 

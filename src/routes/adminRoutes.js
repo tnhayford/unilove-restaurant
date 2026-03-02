@@ -66,6 +66,8 @@ const {
   optimizeMenuUssdNames,
 } = require("../controllers/adminMenuController");
 const { getAnalytics } = require("../controllers/analyticsController");
+const { getMyKpi } = require("../controllers/staffKpiController");
+const { getTodayMoney } = require("../controllers/moneyController");
 const { getLoyaltyOps } = require("../controllers/loyaltyController");
 const { listLogs } = require("../controllers/adminLogController");
 const { createUiEvent } = require("../controllers/uiEventController");
@@ -393,6 +395,8 @@ router.patch(
 );
 
 router.get("/analytics", requireAdminAuth, requirePermission("analytics.view"), asyncHandler(getAnalytics));
+router.get("/kpi/me", requireAdminAuth, requirePermission("orders.view"), asyncHandler(getMyKpi));
+router.get("/money/summary", requireAdminAuth, requirePermission("finance.view"), asyncHandler(getTodayMoney));
 router.get("/loyalty", requireAdminAuth, requirePermission("analytics.view"), asyncHandler(getLoyaltyOps));
 router.get(
   "/sla",

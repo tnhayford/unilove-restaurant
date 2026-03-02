@@ -17,6 +17,11 @@ const {
   updateOrderStatus,
   setPaymentStatus,
   setAssignedRider,
+  setCashierAdmin,
+  setKitchenAccepted,
+  setKitchenReady,
+  setCompletedByAdmin,
+  setCompletedByRider,
   setOpsMonitoredAt,
 } = require("../repositories/orderRepository");
 const { getSetting } = require("../repositories/systemSettingsRepository");
@@ -870,6 +875,7 @@ async function createOrderFromRequest(payload) {
       source,
       paymentMethod,
       paymentStatus,
+      cashierAdminId: payload.createdByAdminId || null,
     }, db);
 
     await createOrderItems(orderId, lineItems, db);
@@ -995,6 +1001,19 @@ async function changeOrderStatus({ orderId, nextStatus, actorType, actorId, deta
   }
 
   await updateOrderStatus(orderId, nextStatus, cancelReason);
+  if (nextStatus === ORDER_STATUS.PREPARING && actorType === "admin" && actorId) {
+    await setKitchenAccepted(orderId, actorId);
+  }
+  if (nextStatus === ORDER_STATUS.READY_FOR_PICKUP && actorType === "admin" && actorId) {
+    await setKitchenReady(orderId, actorId);
+  }
+  if (nextStatus === ORDER_STATUS.DELIVERED) {
+    if (actorType === "admin" && actorId) {
+      await setCompletedByAdmin(orderId, actorId);
+    } else if (actorType === "rider" && actorId) {
+      await setCompletedByRider(orderId, actorId);
+    }
+  }
   const paymentMethod = normalizePaymentMethod(order.payment_method, {
     source: order.source,
     deliveryType: order.delivery_type,
@@ -1531,21 +1550,16 @@ async function createInStoreOrder({
     items,
     source: "instore",
     paymentMethod,
+    createdByAdminId: adminId,
   });
+
+  await setCashierAdmin(order.id, adminId);
 
   let paymentPrompt = null;
   if (paymentMethod === "cash") {
     await changeOrderStatus({
       orderId: order.id,
       nextStatus: ORDER_STATUS.PAID,
-      actorType: "admin",
-      actorId: adminId,
-      details: { source: "instore_order", paymentMethod },
-    });
-
-    await changeOrderStatus({
-      orderId: order.id,
-      nextStatus: ORDER_STATUS.PREPARING,
       actorType: "admin",
       actorId: adminId,
       details: { source: "instore_order", paymentMethod },
@@ -1722,16 +1736,7 @@ async function checkInStoreMomoPaymentStatus({ orderId, adminId }) {
   const paidAttemptDetected = await hasPaidPromptAttempt(order.id);
   if (!paid && paidAttemptDetected) {
     try {
-      let reconciledOrder = await markOrderAsPaid(order.id);
-      if (reconciledOrder.source === "instore" && reconciledOrder.status === ORDER_STATUS.PAID) {
-        reconciledOrder = await changeOrderStatus({
-          orderId: order.id,
-          nextStatus: ORDER_STATUS.PREPARING,
-          actorType: "system",
-          actorId: null,
-          details: { source: "instore_paid_attempt_reconcile" },
-        });
-      }
+      await markOrderAsPaid(order.id);
       refreshedOrder = await getOrderDetails(order.id);
       paid = INSTORE_PAID_OR_PROGRESS_STATUSES.has(refreshedOrder.status);
       if (paid) {

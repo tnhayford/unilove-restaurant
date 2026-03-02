@@ -77,10 +77,18 @@ function renderRows(rows) {
     tr.style.cursor = "pointer";
     tr.innerHTML = `
       <td>${e(order.order_number)}</td>
-      <td>${e(order.full_name)}<br /><span class="order-meta">${e(order.phone)}</span></td>
+      <td>
+        ${e(order.full_name)}<br />
+        <span class="order-meta">${e(order.phone)}</span><br />
+        <span class="order-meta">Cashier: ${e(order.cashier_admin_name || order.cashier_admin_email || order.cashier_admin_id || "Unassigned")}</span>
+      </td>
       <td>${e(order.source)}</td>
       <td>${e(order.delivery_type)}</td>
-      <td>${e(order.status)}${order.cancel_reason ? `<br /><span class="order-meta">${e(order.cancel_reason)}</span>` : ""}</td>
+      <td>
+        ${e(order.status)}
+        ${order.cancel_reason ? `<br /><span class="order-meta">${e(order.cancel_reason)}</span>` : ""}
+        <br /><span class="order-meta">Kitchen: ${e(order.kitchen_accepted_admin_name || order.kitchen_accepted_admin_email || order.kitchen_accepted_by_admin_id || "Pending")}</span>
+      </td>
       <td>${e(paymentMethodLabel(order.payment_method))}<br /><span class="order-meta">${e(paymentStatusLabel(order.payment_status, order.payment_method))}</span></td>
       <td>${order.ageMinutes || 0}m</td>
       <td>GHS ${AdminCore.money(order.subtotal_cedis)}</td>

@@ -19,6 +19,7 @@ const AdminLayout = (() => {
       label: "Insights",
       links: [
         { href: "/admin/analytics.html", label: "Analytics" },
+        { href: "/admin/money.html", label: "Money" },
         { href: "/admin/loyalty.html", label: "Loyalty Ops" },
         { href: "/admin/sla.html", label: "SLA Health" },
         { href: "/admin/reports.html", label: "Reports" },
@@ -46,6 +47,7 @@ const AdminLayout = (() => {
     "/admin/menu.html": "menu.view",
     "/admin/staff.html": "staff.manage",
     "/admin/analytics.html": "analytics.view",
+    "/admin/money.html": "finance.view",
     "/admin/loyalty.html": "analytics.view",
     "/admin/sla.html": ["analytics.view", "settings.sla"],
     "/admin/incidents.html": "incidents.manage",

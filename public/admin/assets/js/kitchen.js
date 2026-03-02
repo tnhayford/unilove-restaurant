@@ -7,6 +7,7 @@ const state = {
   alertIntervalId: null,
   alertAudio: null,
   csrfToken: "",
+  kpiTimerId: null,
 };
 
 function getAdminLayoutApi() {
@@ -49,6 +50,24 @@ function escapeHtml(value) {
 }
 
 function normalizeOrder(raw) {
+  const cashierLabel = String(
+    raw.cashier_admin_name ||
+    raw.cashierAdminName ||
+    raw.cashier_admin_email ||
+    raw.cashierAdminEmail ||
+    raw.cashier_admin_id ||
+    raw.cashierAdminId ||
+    "",
+  ).trim();
+  const kitchenAcceptedLabel = String(
+    raw.kitchen_accepted_admin_name ||
+    raw.kitchenAcceptedAdminName ||
+    raw.kitchen_accepted_admin_email ||
+    raw.kitchenAcceptedAdminEmail ||
+    raw.kitchen_accepted_by_admin_id ||
+    raw.kitchenAcceptedByAdminId ||
+    "",
+  ).trim();
   return {
     id: String(raw.id || ""),
     orderNumber: String(raw.order_number || raw.orderNumber || "-").trim(),
@@ -59,6 +78,8 @@ function normalizeOrder(raw) {
     paymentStatus: String(raw.payment_status || raw.paymentStatus || "PENDING").trim().toUpperCase() || "PENDING",
     status: normalizeStatus(raw.status),
     opsMonitoredAt: raw.ops_monitored_at || raw.opsMonitoredAt || null,
+    cashierLabel: cashierLabel || "Unassigned",
+    kitchenAcceptedLabel: kitchenAcceptedLabel || "Pending",
   };
 }
 
@@ -255,6 +276,8 @@ function renderLane(laneId, countId, orders, kind) {
         <div class="order-collapse" style="display:block;">
           <div class="order-meta">Source: ${escapeHtml(order.source)}</div>
           <div class="order-meta">Payment: ${escapeHtml(paymentMethodLabel(order.paymentMethod))} • ${escapeHtml(paymentStatusLabel(order.paymentStatus, order.paymentMethod))}</div>
+          <div class="order-meta">Cashier: ${escapeHtml(order.cashierLabel || "Unassigned")}</div>
+          <div class="order-meta">Kitchen accepted: ${escapeHtml(order.kitchenAcceptedLabel || "Pending")}</div>
           <div class="order-actions-row">
             <button class="btn btn-sm primary" data-role="kitchen-open" data-order-id="${escapeHtml(order.id)}">
               Open
@@ -334,6 +357,29 @@ function renderKitchenBoard() {
   attachLaneHandlers();
 }
 
+function renderKitchenKpi(snapshot) {
+  const kitchen = snapshot?.kitchen || {};
+  const acceptedEl = document.getElementById("kitchenKpiAccepted");
+  const readyEl = document.getElementById("kitchenKpiReady");
+  const avgPrepEl = document.getElementById("kitchenKpiAvgPrep");
+  const activeEl = document.getElementById("kitchenKpiActive");
+  if (acceptedEl) acceptedEl.textContent = String(Number(kitchen.acceptedCount || 0));
+  if (readyEl) readyEl.textContent = String(Number(kitchen.readyCount || 0));
+  if (avgPrepEl) avgPrepEl.textContent = `${Number(kitchen.avgPrepMinutes || 0).toFixed(1)}m`;
+  if (activeEl) activeEl.textContent = String(Number(kitchen.activePreparingCount || 0));
+}
+
+async function refreshKitchenKpi({ silent = true } = {}) {
+  try {
+    const payload = await apiGet("/api/admin/kpi/me");
+    renderKitchenKpi(payload?.data || {});
+  } catch (error) {
+    if (!silent) {
+      setKitchenStatus(error.message || "Unable to load kitchen KPI.", "error");
+    }
+  }
+}
+
 async function fetchOrders() {
   const payload = await apiGet("/api/admin/orders?limit=150");
   const rows = Array.isArray(payload?.data) ? payload.data : [];
@@ -347,6 +393,7 @@ async function refreshKitchen({ silent = false } = {}) {
   state.orders = await fetchOrders();
   renderKitchenBoard();
   syncAlertLoop();
+  await refreshKitchenKpi({ silent: true });
   setSyncStamp();
   setKitchenStatus(`Loaded ${state.orders.length} order(s).`, "success");
 }
@@ -394,6 +441,12 @@ function mountBackHandler() {
   });
 
   mountRefreshLoop();
+  state.kpiTimerId = setInterval(() => {
+    if (document.hidden) return;
+    refreshKitchenKpi({ silent: true }).catch(() => {
+      // best effort auto-refresh
+    });
+  }, 60000);
 
   window.addEventListener("admin:alert-setting-changed", () => {
     syncAlertLoop();
@@ -410,6 +463,7 @@ function mountBackHandler() {
   window.addEventListener("beforeunload", () => {
     stopAlertLoop();
     if (state.refreshTimerId) clearInterval(state.refreshTimerId);
+    if (state.kpiTimerId) clearInterval(state.kpiTimerId);
   });
 
   await refreshKitchen({ silent: false });

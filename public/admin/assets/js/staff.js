@@ -173,6 +173,9 @@ function collectPermissionPayload() {
   if (payload["payments.reconcile"]) {
     payload["orders.view"] = true;
   }
+  if (payload["finance.view"]) {
+    payload["orders.view"] = true;
+  }
   return payload;
 }
 

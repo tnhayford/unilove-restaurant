@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Money Dashboard</title>
+    <link rel="stylesheet" href="/admin/assets/css/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="title">Restaurant Ops</div>
+          <div class="subtitle">Cash and collection health</div>
+        </div>
+        <nav class="nav-links"></nav>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button id="backBtn" class="btn back-btn" data-fallback="/admin/operations.html">← Back</button>
+            <div>
+              <h1>Money Dashboard</h1>
+              <div class="meta">Today sales, collection channels, and outstanding balances.</div>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <span id="moneyDate" class="meta">Date: --</span>
+            <button id="moneyRefreshBtn" class="btn">Refresh</button>
+          </div>
+        </header>
+
+        <section class="kpis">
+          <article class="kpi-card accent-mint">
+            <div class="label">Collected Today</div>
+            <div class="value" id="moneyCollectedValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-warm">
+            <div class="label">Gross Today</div>
+            <div class="value" id="moneyGrossValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-amber">
+            <div class="label">Outstanding</div>
+            <div class="value" id="moneyOutstandingValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-coral">
+            <div class="label">COD Outstanding</div>
+            <div class="value" id="moneyCodOutstandingValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-sky">
+            <div class="label">MoMo Pending</div>
+            <div class="value" id="moneyMomoPendingValue">GHS 0.00</div>
+          </article>
+          <article class="kpi-card accent-lilac">
+            <div class="label">Paid Orders</div>
+            <div class="value" id="moneyPaidOrdersValue">0</div>
+          </article>
+        </section>
+
+        <section class="analytics-main-grid">
+          <section class="panel table-wrap">
+            <h3>Channels Today</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Payment</th>
+                  <th>Orders</th>
+                  <th>Collected</th>
+                  <th>Outstanding</th>
+                  <th>Gross</th>
+                </tr>
+              </thead>
+              <tbody id="moneyChannelsBody"></tbody>
+            </table>
+          </section>
+
+          <section class="panel table-wrap">
+            <h3>Cashier Performance Today</h3>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Cashier</th>
+                  <th>Orders</th>
+                  <th>Collected</th>
+                  <th>Outstanding</th>
+                </tr>
+              </thead>
+              <tbody id="moneyCashierBody"></tbody>
+            </table>
+            <div id="moneyStatusText" class="helper" style="margin-top:8px;"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="/admin/assets/js/core.js"></script>
+    <script src="/admin/assets/js/layout.js"></script>
+    <script src="/admin/assets/js/money.js"></script>
+  </body>
+</html>

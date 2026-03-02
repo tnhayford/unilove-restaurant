@@ -1,14 +1,34 @@
 const { uuidv4 } = require("../utils/uuid");
 const { getDb } = require("../db/connection");
 
+const ORDER_SELECT_WITH_STAFF = `
+  o.*,
+  cashier.email AS cashier_admin_email,
+  cashier.full_name AS cashier_admin_name,
+  kitchen_accept.email AS kitchen_accepted_admin_email,
+  kitchen_accept.full_name AS kitchen_accepted_admin_name,
+  kitchen_ready.email AS kitchen_ready_admin_email,
+  kitchen_ready.full_name AS kitchen_ready_admin_name,
+  completed_admin.email AS completed_by_admin_email,
+  completed_admin.full_name AS completed_by_admin_name
+`;
+
+const ORDER_STAFF_JOINS = `
+  LEFT JOIN admin_users cashier ON cashier.id = o.cashier_admin_id
+  LEFT JOIN admin_users kitchen_accept ON kitchen_accept.id = o.kitchen_accepted_by_admin_id
+  LEFT JOIN admin_users kitchen_ready ON kitchen_ready.id = o.kitchen_ready_by_admin_id
+  LEFT JOIN admin_users completed_admin ON completed_admin.id = o.completed_by_admin_id
+`;
+
 async function createOrder(order, dbOverride = null) {
   const db = dbOverride || (await getDb());
   await db.run(
     `INSERT INTO orders (
       id, customer_id, phone, full_name, delivery_type, address,
       status, subtotal_cedis, hubtel_session_id, client_reference,
-      order_number, source, payment_method, payment_status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
+      order_number, source, payment_method, payment_status,
+      cashier_admin_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)` ,
     [
       order.id,
       order.customerId,
@@ -24,6 +44,7 @@ async function createOrder(order, dbOverride = null) {
       order.source || "online",
       order.paymentMethod || "momo",
       order.paymentStatus || "PENDING",
+      order.cashierAdminId || null,
     ],
   );
 }
@@ -51,29 +72,57 @@ async function createOrderItems(orderId, items, dbOverride = null) {
 
 async function getOrderById(orderId) {
   const db = await getDb();
-  return db.get("SELECT * FROM orders WHERE id = ?", [orderId]);
+  return db.get(
+    `SELECT ${ORDER_SELECT_WITH_STAFF}
+     FROM orders o
+     ${ORDER_STAFF_JOINS}
+     WHERE o.id = ?`,
+    [orderId],
+  );
 }
 
 async function getOrderByClientReference(clientReference) {
   const db = await getDb();
-  return db.get("SELECT * FROM orders WHERE client_reference = ?", [clientReference]);
+  return db.get(
+    `SELECT ${ORDER_SELECT_WITH_STAFF}
+     FROM orders o
+     ${ORDER_STAFF_JOINS}
+     WHERE o.client_reference = ?`,
+    [clientReference],
+  );
 }
 
 async function getOrderByOrderNumber(orderNumber) {
   const db = await getDb();
-  return db.get("SELECT * FROM orders WHERE order_number = ?", [orderNumber]);
+  return db.get(
+    `SELECT ${ORDER_SELECT_WITH_STAFF}
+     FROM orders o
+     ${ORDER_STAFF_JOINS}
+     WHERE o.order_number = ?`,
+    [orderNumber],
+  );
 }
 
 async function getOrderByHubtelSessionId(sessionId) {
   const db = await getDb();
-  return db.get("SELECT * FROM orders WHERE hubtel_session_id = ?", [sessionId]);
+  return db.get(
+    `SELECT ${ORDER_SELECT_WITH_STAFF}
+     FROM orders o
+     ${ORDER_STAFF_JOINS}
+     WHERE o.hubtel_session_id = ?`,
+    [sessionId],
+  );
 }
 
 async function listOrders(limit = 200) {
   const db = await getDb();
   const safeLimit = Math.max(20, Math.min(Number(limit || 200), 300));
   return db.all(
-    `SELECT * FROM orders ORDER BY datetime(created_at) DESC LIMIT ?`,
+    `SELECT ${ORDER_SELECT_WITH_STAFF}
+     FROM orders o
+     ${ORDER_STAFF_JOINS}
+     ORDER BY datetime(o.created_at) DESC
+     LIMIT ?`,
     [safeLimit],
   );
 }
@@ -111,41 +160,41 @@ function buildOrderHistoryFilters(filters = {}) {
   const params = [];
 
   if (filters.startDate) {
-    clauses.push("date(created_at) >= date(?)");
+    clauses.push("date(o.created_at) >= date(?)");
     params.push(filters.startDate);
   }
   if (filters.endDate) {
-    clauses.push("date(created_at) <= date(?)");
+    clauses.push("date(o.created_at) <= date(?)");
     params.push(filters.endDate);
   }
   if (filters.source) {
-    clauses.push("source = ?");
+    clauses.push("o.source = ?");
     params.push(filters.source);
   }
   if (filters.deliveryType) {
-    clauses.push("delivery_type = ?");
+    clauses.push("o.delivery_type = ?");
     params.push(filters.deliveryType);
   }
   if (filters.status) {
-    clauses.push("status = ?");
+    clauses.push("o.status = ?");
     params.push(filters.status);
   }
   if (filters.searchText) {
-    clauses.push("(order_number LIKE ? OR full_name LIKE ? OR phone LIKE ?)");
+    clauses.push("(o.order_number LIKE ? OR o.full_name LIKE ? OR o.phone LIKE ?)");
     const likeValue = `%${filters.searchText}%`;
     params.push(likeValue, likeValue, likeValue);
   }
-      if (filters.paymentIssueOnly) {
-    clauses.push("status IN ('PENDING_PAYMENT', 'PAYMENT_FAILED', 'REFUNDED')");
+  if (filters.paymentIssueOnly) {
+    clauses.push("o.status IN ('PENDING_PAYMENT', 'PAYMENT_FAILED', 'REFUNDED')");
   }
   if (filters.delayedOnly) {
     clauses.push(
       `(
         (julianday(CASE
-          WHEN status IN ('DELIVERED', 'RETURNED', 'REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
-            THEN updated_at
+          WHEN o.status IN ('DELIVERED', 'RETURNED', 'REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+            THEN o.updated_at
           ELSE datetime('now')
-        END) - julianday(created_at)) * 24 * 60
+        END) - julianday(o.created_at)) * 24 * 60
       ) > 30`,
     );
   }
@@ -163,52 +212,71 @@ async function listOrderHistory(filters = {}) {
 
   const rows = await db.all(
     `SELECT
-       id,
-       order_number,
-       full_name,
-       phone,
-       source,
-       delivery_type,
-       payment_method,
-       payment_status,
-       status,
-       cancel_reason,
-       subtotal_cedis,
-       loyalty_points_issued,
-       payment_confirmed_at,
-       ops_monitored_at,
-       cancel_reason,
-       created_at,
-       updated_at,
+       o.id,
+       o.order_number,
+       o.full_name,
+       o.phone,
+       o.source,
+       o.delivery_type,
+       o.payment_method,
+       o.payment_status,
+       o.status,
+       o.cancel_reason,
+       o.subtotal_cedis,
+       o.loyalty_points_issued,
+       o.payment_confirmed_at,
+       o.ops_monitored_at,
+       o.cancel_reason,
+       o.created_at,
+       o.updated_at,
+       o.cashier_admin_id,
+       o.kitchen_accepted_by_admin_id,
+       o.kitchen_accepted_at,
+       o.kitchen_ready_by_admin_id,
+       o.kitchen_ready_at,
+       o.completed_by_admin_id,
+       o.completed_by_rider_id,
+       cashier.email AS cashier_admin_email,
+       cashier.full_name AS cashier_admin_name,
+       kitchen_accept.email AS kitchen_accepted_admin_email,
+       kitchen_accept.full_name AS kitchen_accepted_admin_name,
+       kitchen_ready.email AS kitchen_ready_admin_email,
+       kitchen_ready.full_name AS kitchen_ready_admin_name,
+       completed_admin.email AS completed_by_admin_email,
+       completed_admin.full_name AS completed_by_admin_name,
        CAST(
          ROUND(
            (julianday(CASE
-             WHEN status IN ('DELIVERED', 'RETURNED', 'REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
-               THEN updated_at
+             WHEN o.status IN ('DELIVERED', 'RETURNED', 'REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+               THEN o.updated_at
              ELSE datetime('now')
-           END) - julianday(created_at)) * 24 * 60
+           END) - julianday(o.created_at)) * 24 * 60
          ) AS INTEGER
        ) AS age_minutes,
        CASE
          WHEN
            ((julianday(CASE
-             WHEN status IN ('DELIVERED', 'RETURNED', 'REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
-               THEN updated_at
+             WHEN o.status IN ('DELIVERED', 'RETURNED', 'REFUNDED', 'CANCELED', 'PAYMENT_FAILED')
+               THEN o.updated_at
              ELSE datetime('now')
-           END) - julianday(created_at)) * 24 * 60) > 30
+           END) - julianday(o.created_at)) * 24 * 60) > 30
          THEN 1
          ELSE 0
        END AS is_delayed
-     FROM orders
+     FROM orders o
+     LEFT JOIN admin_users cashier ON cashier.id = o.cashier_admin_id
+     LEFT JOIN admin_users kitchen_accept ON kitchen_accept.id = o.kitchen_accepted_by_admin_id
+     LEFT JOIN admin_users kitchen_ready ON kitchen_ready.id = o.kitchen_ready_by_admin_id
+     LEFT JOIN admin_users completed_admin ON completed_admin.id = o.completed_by_admin_id
      ${whereClause}
-     ORDER BY datetime(created_at) DESC
+     ORDER BY datetime(o.created_at) DESC
      LIMIT ? OFFSET ?`,
     [...params, limit, offset],
   );
 
   const totalRow = await db.get(
     `SELECT COUNT(*) AS total
-     FROM orders
+     FROM orders o
      ${whereClause}`,
     params,
   );
@@ -306,6 +374,63 @@ async function setAssignedRider(orderId, riderId) {
   );
 }
 
+async function setCashierAdmin(orderId, adminId) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE orders
+     SET cashier_admin_id = COALESCE(cashier_admin_id, ?),
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [adminId || null, orderId],
+  );
+}
+
+async function setKitchenAccepted(orderId, adminId) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE orders
+     SET kitchen_accepted_by_admin_id = COALESCE(kitchen_accepted_by_admin_id, ?),
+         kitchen_accepted_at = COALESCE(kitchen_accepted_at, datetime('now')),
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [adminId || null, orderId],
+  );
+}
+
+async function setKitchenReady(orderId, adminId) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE orders
+     SET kitchen_ready_by_admin_id = COALESCE(kitchen_ready_by_admin_id, ?),
+         kitchen_ready_at = COALESCE(kitchen_ready_at, datetime('now')),
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [adminId || null, orderId],
+  );
+}
+
+async function setCompletedByAdmin(orderId, adminId) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE orders
+     SET completed_by_admin_id = COALESCE(completed_by_admin_id, ?),
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [adminId || null, orderId],
+  );
+}
+
+async function setCompletedByRider(orderId, riderId) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE orders
+     SET completed_by_rider_id = COALESCE(completed_by_rider_id, ?),
+         updated_at = datetime('now')
+     WHERE id = ?`,
+    [riderId || null, orderId],
+  );
+}
+
 async function setOpsMonitoredAt(orderId) {
   const db = await getDb();
   await db.run(
@@ -345,6 +470,11 @@ module.exports = {
   setPaymentStatus,
   setReturnedRider,
   setAssignedRider,
+  setCashierAdmin,
+  setKitchenAccepted,
+  setKitchenReady,
+  setCompletedByAdmin,
+  setCompletedByRider,
   setOpsMonitoredAt,
   updateLoyaltyPointsIssued,
 };

@@ -87,7 +87,30 @@ function renderSummary(order) {
     ["Payment Method", paymentMethodLabel(order.payment_method)],
     ["Payment Status", paymentStatusLabel(order.payment_status, order.payment_method)],
     ["Address", order.address || "N/A"],
+    [
+      "Cashier",
+      order.cashier_admin_name || order.cashier_admin_email || order.cashier_admin_id || "Unassigned",
+    ],
+    [
+      "Kitchen Accepted By",
+      order.kitchen_accepted_admin_name
+        || order.kitchen_accepted_admin_email
+        || order.kitchen_accepted_by_admin_id
+        || "Pending",
+    ],
+    [
+      "Kitchen Ready By",
+      order.kitchen_ready_admin_name
+        || order.kitchen_ready_admin_email
+        || order.kitchen_ready_by_admin_id
+        || "Pending",
+    ],
     ["Assigned Rider", order.assigned_rider_id || "Unassigned"],
+    ["Completed By Rider", order.completed_by_rider_id || "N/A"],
+    [
+      "Completed By Admin",
+      order.completed_by_admin_name || order.completed_by_admin_email || order.completed_by_admin_id || "N/A",
+    ],
     ["Cancel Reason", order.cancel_reason || "N/A"],
     ["Subtotal", `GHS ${AdminCore.money(order.subtotal_cedis)}`],
     ["Age", `${order.ageMinutes || 0} minutes`],

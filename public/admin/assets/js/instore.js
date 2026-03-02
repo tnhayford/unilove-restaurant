@@ -18,6 +18,7 @@ let paymentMonitorIntervalId = null;
 let paymentMonitorCountdownTickId = null;
 let paymentMonitorRefreshInFlight = false;
 let monitorPermissionWarningShown = false;
+let cashierKpiIntervalId = null;
 const monitorRetryInFlight = new Set();
 const monitorStatusCheckInFlight = new Set();
 
@@ -1395,9 +1396,41 @@ function renderResult(order) {
   result.textContent = `Order ${order.order_number || "-"} created (${order.status || "-"})`;
 }
 
+function renderCashierKpi(snapshot) {
+  const cashier = snapshot?.cashier || {};
+  const initiated = Number(cashier.initiatedCount || 0);
+  const conversion = Number(cashier.paymentConversionRate || 0).toFixed(2);
+  const paidSales = Number(cashier.paidSalesCedis || 0);
+  const avgPaymentMins = Number(cashier.avgPaymentMinutes || 0).toFixed(1);
+
+  const initiatedEl = document.getElementById("cashierKpiInitiated");
+  const paidSalesEl = document.getElementById("cashierKpiPaidSales");
+  const conversionEl = document.getElementById("cashierKpiConversion");
+  const avgPayEl = document.getElementById("cashierKpiAvgPayMins");
+  if (initiatedEl) initiatedEl.textContent = String(initiated);
+  if (paidSalesEl) paidSalesEl.textContent = `GHS ${AdminCore.money(paidSales)}`;
+  if (conversionEl) conversionEl.textContent = `${conversion}%`;
+  if (avgPayEl) avgPayEl.textContent = `${avgPaymentMins}m`;
+}
+
+async function refreshCashierKpi({ silent = true } = {}) {
+  try {
+    const payload = await AdminCore.api("/api/admin/kpi/me");
+    renderCashierKpi(payload?.data || {});
+  } catch (error) {
+    if (!silent) {
+      AdminLayout.setStatus(error.message || "Unable to load cashier KPI.", "error");
+    }
+  }
+}
+
 (async function initInstoreUi() {
   await AdminLayout.initProtectedPage();
   AdminLayout.setStatus("Ready.", "helper");
+  await refreshCashierKpi({ silent: true });
+  cashierKpiIntervalId = window.setInterval(() => {
+    refreshCashierKpi({ silent: true }).catch(() => {});
+  }, 60000);
 
   const backBtn = document.getElementById("backBtn");
   if (backBtn) {
@@ -1641,4 +1674,11 @@ function renderResult(order) {
   }
   renderCart();
   updateActionButtonState();
+
+  window.addEventListener("beforeunload", () => {
+    if (cashierKpiIntervalId) {
+      window.clearInterval(cashierKpiIntervalId);
+      cashierKpiIntervalId = null;
+    }
+  });
 })();

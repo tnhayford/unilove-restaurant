@@ -102,6 +102,13 @@ async function runMigrations() {
       payment_confirmed_at TEXT,
       assigned_rider_id TEXT,
       returned_rider_id TEXT,
+      cashier_admin_id TEXT,
+      kitchen_accepted_by_admin_id TEXT,
+      kitchen_accepted_at TEXT,
+      kitchen_ready_by_admin_id TEXT,
+      kitchen_ready_at TEXT,
+      completed_by_admin_id TEXT,
+      completed_by_rider_id TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY(customer_id) REFERENCES customers(id)
@@ -489,6 +496,13 @@ async function runMigrations() {
   await ensureColumn(db, "orders", "payment_status", "TEXT NOT NULL DEFAULT 'PENDING'");
   await ensureColumn(db, "orders", "ops_monitored_at", "TEXT");
   await ensureColumn(db, "orders", "assigned_rider_id", "TEXT");
+  await ensureColumn(db, "orders", "cashier_admin_id", "TEXT");
+  await ensureColumn(db, "orders", "kitchen_accepted_by_admin_id", "TEXT");
+  await ensureColumn(db, "orders", "kitchen_accepted_at", "TEXT");
+  await ensureColumn(db, "orders", "kitchen_ready_by_admin_id", "TEXT");
+  await ensureColumn(db, "orders", "kitchen_ready_at", "TEXT");
+  await ensureColumn(db, "orders", "completed_by_admin_id", "TEXT");
+  await ensureColumn(db, "orders", "completed_by_rider_id", "TEXT");
   await ensureColumn(db, "orders", "cancel_reason", "TEXT");
   await ensureColumn(db, "admin_users", "full_name", "TEXT");
   await ensureColumn(db, "admin_users", "role", "TEXT NOT NULL DEFAULT 'staff'");
@@ -509,6 +523,15 @@ async function runMigrations() {
   );
   await db.exec(
     "CREATE INDEX IF NOT EXISTS idx_orders_assigned_rider_status ON orders(assigned_rider_id, status);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_orders_cashier_created_at ON orders(cashier_admin_id, created_at);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_orders_kitchen_accepted_at ON orders(kitchen_accepted_by_admin_id, kitchen_accepted_at);",
+  );
+  await db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_orders_kitchen_ready_at ON orders(kitchen_ready_by_admin_id, kitchen_ready_at);",
   );
   await db.exec(
     "CREATE INDEX IF NOT EXISTS idx_guest_rider_devices_rider ON guest_rider_devices(rider_id);",

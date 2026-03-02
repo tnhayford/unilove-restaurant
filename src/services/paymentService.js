@@ -11,7 +11,6 @@ const {
   getOrderByHubtelSessionId,
 } = require("../repositories/orderRepository");
 const {
-  changeOrderStatus,
   markOrderAsPaid,
 } = require("./orderService");
 const { ORDER_STATUS } = require("../utils/orderStatus");
@@ -136,19 +135,6 @@ async function applySuccessfulPayment(order, normalized) {
   let currentOrder = order;
   if (!finalizedStates.includes(order.status)) {
     currentOrder = await markOrderAsPaid(order.id);
-  }
-
-  if (
-    currentOrder.source === "instore" &&
-    currentOrder.status === ORDER_STATUS.PAID
-  ) {
-    currentOrder = await changeOrderStatus({
-      orderId: currentOrder.id,
-      nextStatus: ORDER_STATUS.PREPARING,
-      actorType: "system",
-      actorId: null,
-      details: { source: "instore_momo_callback" },
-    });
   }
 }
 
